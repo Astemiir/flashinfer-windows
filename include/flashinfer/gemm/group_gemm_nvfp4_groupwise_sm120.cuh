@@ -161,7 +161,7 @@ cudaError_t CutlassNVFP4GroupwiseScaledGroupGEMMSM120(
     using LayoutC = void;                                                                                                                                                         \
     constexpr int AlignmentC = 0;                                                                                                                                                 \
     constexpr int AlignmentD = 128 / cutlass::sizeof_bits<ElementD>::value;                                                                                                       \
-    FLASHINFER_CHECK(k % std::max(AlignmentA, AlignmentB) == 0, "k must be divisible by %d",                                                                                      \
+    FLASHINFER_CHECK(k % fi_max(AlignmentA, AlignmentB) == 0, "k must be divisible by %d",                                                                                      \
                      max(AlignmentA, AlignmentB));                                                                                                                                \
     FLASHINFER_CHECK(n % AlignmentD == 0, "n must be divisible by %d", AlignmentD);                                                                                               \
     using ElementAccumulator = float;                                                                                                                                             \
@@ -229,7 +229,7 @@ cudaError_t CutlassNVFP4GroupwiseScaledGroupGEMMSM120(
                                                          "sm120_groupwise_group_gemm_layout_SFA");                                                                                \
     auto layout_SFB = allocator.aligned_alloc<LayoutSFB>(num_groups * sizeof(LayoutSFB), 16,                                                                                      \
                                                          "sm120_groupwise_group_gemm_layout_SFB");                                                                                \
-    int num_threads = std::min(num_groups, 1024);                                                                                                                                 \
+    int num_threads = fi_min(num_groups, 1024);                                                                                                                                 \
     int num_blocks = (num_groups + num_threads - 1) / num_threads;                                                                                                                \
     cudaLaunchConfig_t config;                                                                                                                                                    \
     config.gridDim = num_blocks;                                                                                                                                                  \

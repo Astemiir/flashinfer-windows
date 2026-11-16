@@ -35,7 +35,7 @@ enum Operation {
 };
 
 template <typename KTraits_P, typename KTraits_D, typename PrefillParams, typename DecodeParams>
-__global__ __launch_bounds__(std::max(
+__global__ __launch_bounds__(fi_max(
     KTraits_P::NUM_THREADS,
     KTraits_D::NUM_THREADS)) void BatchPODWithKVCacheTensorKernel(const __grid_constant__
                                                                       PrefillParams prefill_params,

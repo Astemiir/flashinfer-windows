@@ -1451,7 +1451,7 @@ class FusedMoeLauncher {
 
     // expert_weights allocation should be done by derived class since data type could vary
 
-    int64_t const size_of_expert_count_histogram = std::max(totalNumExperts * 2, 256 * 2);
+    int64_t const size_of_expert_count_histogram = fi_max(totalNumExperts * 2, 256 * 2);
     expert_count_histogram = alloc_tensor({size_of_expert_count_histogram},
                                           dl_int32,  // 256 is the max number of threads per block
                                                      // and max number of experts

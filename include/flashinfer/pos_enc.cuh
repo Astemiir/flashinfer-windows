@@ -1060,9 +1060,9 @@ cudaError_t RopeQuantize(
   DISPATCH_INTERLEAVE(interleave, INTERLEAVE, {
     constexpr uint32_t vec_size = 32 / sizeof(DType);
     uint32_t bdx = (rope_dim + vec_size - 1) / vec_size;
-    bdx = std::max(1u, bdx);
-    uint32_t num_threads = std::max(128U, bdx);
-    uint32_t bdy = std::max(1u, num_threads / bdx);
+    bdx = fi_max(1u, bdx);
+    uint32_t num_threads = fi_max(128U, bdx);
+    uint32_t bdy = fi_max(1u, num_threads / bdx);
     uint32_t nblks_x = (nnz + bdy - 1) / bdy;
     uint32_t rope_chunk_size = rope_dim;
     uint32_t rope_chunks = (rope_dim + rope_chunk_size - 1) / rope_chunk_size;
@@ -1148,9 +1148,9 @@ cudaError_t RopeQuantizeAppendPagedKVCache(
   DISPATCH_INTERLEAVE(interleave, INTERLEAVE, {
     constexpr uint32_t vec_size = 32 / sizeof(DType);
     uint32_t bdx = (rope_dim + vec_size - 1) / vec_size;
-    bdx = std::max(1u, bdx);
-    uint32_t num_threads = std::max(128U, bdx);
-    uint32_t bdy = std::max(1u, num_threads / bdx);
+    bdx = fi_max(1u, bdx);
+    uint32_t num_threads = fi_max(128U, bdx);
+    uint32_t bdy = fi_max(1u, num_threads / bdx);
     uint32_t nblks_x = (nnz + bdy - 1) / bdy;
     uint32_t rope_chunks = 1;
     uint32_t no_rope_chunks = (no_rope_dim + rope_dim - 1) / rope_dim;
@@ -1224,9 +1224,9 @@ cudaError_t RopeQuantizeAppendPagedMLACache(
   DISPATCH_INTERLEAVE(interleave, INTERLEAVE, {
     constexpr uint32_t vec_size = 32 / sizeof(DType);
     uint32_t bdx = (rope_dim + vec_size - 1) / vec_size;
-    bdx = std::max(1u, bdx);
-    uint32_t num_threads = std::max(128U, bdx);
-    uint32_t bdy = std::max(1u, num_threads / bdx);
+    bdx = fi_max(1u, bdx);
+    uint32_t num_threads = fi_max(128U, bdx);
+    uint32_t bdy = fi_max(1u, num_threads / bdx);
     uint32_t nblks_x = (nnz + bdy - 1) / bdy;
     uint32_t rope_chunks = 1;
     uint32_t no_rope_chunks = (no_rope_dim + rope_dim - 1) / rope_dim;
@@ -1318,11 +1318,11 @@ cudaError_t BatchQKApplyRotaryPosIdsCosSinCache(
     DISPATCH_INTERLEAVE(interleave, INTERLEAVE, {
       DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, {
         // operate on 16 Bytes at a time
-        constexpr uint32_t vec_size = std::max(16 / sizeof(DType), HEAD_DIM / 32);
+        constexpr uint32_t vec_size = fi_max(16 / sizeof(DType), HEAD_DIM / 32);
         // how many threads needed per head_dim
         constexpr uint32_t bdx = HEAD_DIM / vec_size;
         // how many threads needed per block
-        uint32_t num_threads = std::max(128U, bdx);
+        uint32_t num_threads = fi_max(128U, bdx);
         // how many tokens can we process in a block
         uint32_t bdy = num_threads / bdx;
         // how many blocks needed to process all tokens
@@ -1409,9 +1409,9 @@ cudaError_t BatchQKApplyRotaryPosIds(
 
   DISPATCH_INTERLEAVE(interleave, INTERLEAVE, {
     DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, {
-      constexpr uint32_t vec_size = std::max(16 / sizeof(DType), HEAD_DIM / 32);
+      constexpr uint32_t vec_size = fi_max(16 / sizeof(DType), HEAD_DIM / 32);
       constexpr uint32_t bdx = HEAD_DIM / vec_size;
-      uint32_t num_threads = std::max(128U, bdx);
+      uint32_t num_threads = fi_max(128U, bdx);
       uint32_t bdy = num_threads / bdx;
       uint32_t nblks_x = (nnz + bdy - 1) / bdy;
 
@@ -1478,9 +1478,9 @@ cudaError_t BatchQKApplyRotary(DType* q, DType* k, DType* q_rope, DType* k_rope,
 
   DISPATCH_INTERLEAVE(interleave, INTERLEAVE, {
     DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, {
-      constexpr uint32_t vec_size = std::max(16 / sizeof(DType), HEAD_DIM / 32);
+      constexpr uint32_t vec_size = fi_max(16 / sizeof(DType), HEAD_DIM / 32);
       constexpr uint32_t bdx = HEAD_DIM / vec_size;
-      uint32_t num_threads = std::max(128U, bdx);
+      uint32_t num_threads = fi_max(128U, bdx);
       uint32_t bdy = num_threads / bdx;
       dim3 nblks(batch_size * (num_qo_heads + num_kv_heads));
       dim3 nthrs(bdx, bdy);
@@ -1555,9 +1555,9 @@ cudaError_t BatchQKApplyLlama31Rotary(
 
   DISPATCH_INTERLEAVE(interleave, INTERLEAVE, {
     DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, {
-      constexpr uint32_t vec_size = std::max(16 / sizeof(DType), HEAD_DIM / 32);
+      constexpr uint32_t vec_size = fi_max(16 / sizeof(DType), HEAD_DIM / 32);
       constexpr uint32_t bdx = HEAD_DIM / vec_size;
-      uint32_t num_threads = std::max(128U, bdx);
+      uint32_t num_threads = fi_max(128U, bdx);
       uint32_t bdy = num_threads / bdx;
       dim3 nblks(batch_size * (num_qo_heads + num_kv_heads));
       dim3 nthrs(bdx, bdy);
@@ -1606,9 +1606,9 @@ cudaError_t BatchQKApplyLlama31RotaryPosIds(
 
   DISPATCH_INTERLEAVE(interleave, INTERLEAVE, {
     DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, {
-      constexpr uint32_t vec_size = std::max(16 / sizeof(DType), HEAD_DIM / 32);
+      constexpr uint32_t vec_size = fi_max(16 / sizeof(DType), HEAD_DIM / 32);
       constexpr uint32_t bdx = HEAD_DIM / vec_size;
-      uint32_t num_threads = std::max(128U, bdx);
+      uint32_t num_threads = fi_max(128U, bdx);
       uint32_t bdy = num_threads / bdx;
       dim3 nblks((nnz + bdy - 1) / bdy);
       dim3 nthrs(bdx, bdy);

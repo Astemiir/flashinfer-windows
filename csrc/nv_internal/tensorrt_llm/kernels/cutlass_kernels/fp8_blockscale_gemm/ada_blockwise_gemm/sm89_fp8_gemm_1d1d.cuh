@@ -276,7 +276,7 @@ struct AdaBlockwiseGemmKernel {
         cute::clear(tBpB);
         cute::clear(tApSFA);
       }
-      auto k_tile_iter = std::min(k_pipe, k_tile_count - 1);
+      auto k_tile_iter = fi_min(k_pipe, k_tile_count - 1);
       cute::copy_if(g2s_copy_A, tApA, tAgA(cute::_, cute::_, cute::_, k_tile_iter),
                     tAsA(cute::_, cute::_, cute::_, k_pipe));
       cute::copy_if(g2s_copy_B, tBpB, tBgB(cute::_, cute::_, cute::_, k_tile_iter),

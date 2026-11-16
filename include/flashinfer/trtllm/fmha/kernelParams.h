@@ -211,7 +211,7 @@ struct KernelParams {
     // The number of grouped heads for the A matrix of MMA.
     int32_t numGroupedHeads{1};
     if (groupsHeadsQ) {
-      numGroupedHeads = std::min(tileSizeQ, options.mNumHeadsQPerKv);
+      numGroupedHeads = fi_min(tileSizeQ, options.mNumHeadsQPerKv);
     }
 
     // The number of heads.
@@ -425,7 +425,7 @@ struct KernelParams {
     // Note that contiguousKv or pagedKv will pad K and V to maxHeadDimKv.
     int32_t headDim = isK ? options.mHeadDimQk : options.mHeadDimV;
     if (isPagedKv(options.mQkvLayout) || isContiguousKv(options.mQkvLayout)) {
-      headDim = std::max(options.mHeadDimQk, options.mHeadDimV);
+      headDim = fi_max(options.mHeadDimQk, options.mHeadDimV);
     }
 
     // For K, the cute layout: (numKeys, headDim, ((numHeadsQPerKv, numHeadsKv),
@@ -493,7 +493,7 @@ struct KernelParams {
     // Note that contiguousKv or pagedKv will pad K and V to maxHeadDimKv.
     int32_t headDim = isK ? options.mHeadDimQk : options.mHeadDimV;
     if (isPagedKv(options.mQkvLayout) || isContiguousKv(options.mQkvLayout)) {
-      headDim = std::max(options.mHeadDimQk, options.mHeadDimV);
+      headDim = fi_max(options.mHeadDimQk, options.mHeadDimV);
     }
     // The number of elements per SF.
     int32_t NumEltsPerSf = 16;
@@ -548,7 +548,7 @@ struct KernelParams {
       kPtr = runnerParams.kvPtr;
       // The maximum headDim of K and V.
       // Note that contiguousKv or pagedKv will pad K and V to maxHeadDimKv.
-      int32_t const maxHeadDimKv{std::max(runnerParams.mHeadDimQk, runnerParams.mHeadDimV)};
+      int32_t const maxHeadDimKv{fi_max(runnerParams.mHeadDimQk, runnerParams.mHeadDimV)};
       vPtr =
           reinterpret_cast<void const*>(reinterpret_cast<char const*>(runnerParams.kvPtr) +
                                         runnerParams.mNumHeadsKv * runnerParams.mMaxSeqLenCacheKv *
@@ -621,7 +621,7 @@ struct KernelParams {
     std::vector<uint64_t> stridesInBytes(dim - 1);
     for (int32_t ii = 0; ii < dim - 1; ++ii) {
       stridesInBytes[ii] = strides[ii + 1] *
-                           std::max(get_size_in_bits(dtypeElt), static_cast<size_t>(8)) / 8 /*bit*/;
+                           fi_max(get_size_in_bits(dtypeElt), static_cast<size_t>(8)) / 8 /*bit*/;
     }
 
     // Set tile strides to 0;
@@ -674,7 +674,7 @@ struct KernelParams {
 
     // The maximum headDim of K and V.
     // Note that contiguousKv or pagedKv will pad K and V to maxHeadDimKv.
-    int32_t const maxHeadDimKv{std::max(options.mHeadDimQk, options.mHeadDimV)};
+    int32_t const maxHeadDimKv{fi_max(options.mHeadDimQk, options.mHeadDimV)};
 
     // Set the number of pages in the memory pool for paged K/V cache.
     if (isPagedKv(options.mQkvLayout)) {
@@ -686,7 +686,7 @@ struct KernelParams {
     // The number of elements in 128B for Q.
     int32_t numEltsIn128BQ = (128 * 8) / get_size_in_bits(kernelMeta.mDataTypeQ);
     // The number of head elts (per token) in each block of shared memory.
-    int32_t numEltsInClampedHeadDimQ = std::min(numEltsIn128BQ, options.mHeadDimQk);
+    int32_t numEltsInClampedHeadDimQ = fi_min(numEltsIn128BQ, options.mHeadDimQk);
 
     // Shape/stride for gmem tensor Q.
     auto [shapeQ, strideQ, tileShapeQ, numTokensPerCtaQ] =
@@ -698,14 +698,14 @@ struct KernelParams {
 
     // The number of keys per tile.
     int32_t numKeysPerTile = isPagedKv(options.mQkvLayout)
-                                 ? std::min(options.mNumTokensPerPage, kernelMeta.mTileSizeKv)
+                                 ? fi_min(options.mNumTokensPerPage, kernelMeta.mTileSizeKv)
                                  : kernelMeta.mTileSizeKv;
     // The number of elements in 128B for Q.
     int32_t numEltsIn128BKv = (128 * 8) / get_size_in_bits(kernelMeta.mDataTypeK);
     // The number of head elts (per token) in each block of shared memory (see above explanation).
 
     // HeadDim will be split into multiple headDimStages (128) if maxHeadDimKv > 128.
-    int32_t numEltsInClampedHeadDimKv = std::min({numEltsIn128BKv, maxHeadDimKv, 128});
+    int32_t numEltsInClampedHeadDimKv = fi_min({numEltsIn128BKv, maxHeadDimKv, 128});
 
     // Do we have to transform K/V before MMA?
     bool const transformsKv{kernelMeta.mDataTypeK != kernelMeta.mDataTypeQ};
@@ -728,8 +728,8 @@ struct KernelParams {
     //   - numKeysPerTile: can't reshape more rows than the tile covers.
     int32_t const reshapeFactorKv{
         canReshapeTmaKv
-            ? std::max(
-                  1, std::min(
+            ? fi_max(
+                  1, fi_min(
                          {128 / maxHeadDimKv,
                           128 / (maxHeadDimKv *
                                  static_cast<int32_t>(get_size_in_bits(kernelMeta.mDataTypeK)) / 8),
@@ -795,7 +795,7 @@ struct KernelParams {
       int32_t NumEltsPerSf = 16;
       // The reshape factor for K/V SF: aim for box width 128B, limit to numKeysPerTile.
       int32_t const reshapeFactorKvSf =
-          std::min(128 / (maxHeadDimKv / NumEltsPerSf), numKeysPerTile);
+          fi_min(128 / (maxHeadDimKv / NumEltsPerSf), numKeysPerTile);
       // Compute the shape and stride for SF tensor.
       // FIXME: assume K and V uses the same shape.
       auto [shapeKvSf, strideKvSf] =

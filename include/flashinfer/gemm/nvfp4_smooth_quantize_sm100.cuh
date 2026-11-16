@@ -522,11 +522,11 @@ void launchSmoothQuantizeFast(void* out, void* sfOut, void const* in, void const
   int64_t const hotCtas = (static_cast<int64_t>(numRows) + RowsPerCta - 1) / RowsPerCta;
   int64_t const numPaddingStores = static_cast<int64_t>(numPaddedRows - numRows) * NumSfGroups;
   int64_t const paddingCtas = (numPaddingStores + blockThreads - 1) / blockThreads;
-  int64_t const wantedCtas = std::max(hotCtas, paddingCtas);
+  int64_t const wantedCtas = fi_max(hotCtas, paddingCtas);
   int64_t const maxCtas = static_cast<int64_t>(multiProcessorCount) * blocksPerSm;
 
   cudaLaunchConfig_t cfg = {};
-  cfg.gridDim = dim3(static_cast<unsigned int>(std::min(wantedCtas, maxCtas)));
+  cfg.gridDim = dim3(static_cast<unsigned int>(fi_min(wantedCtas, maxCtas)));
   cfg.blockDim = dim3(blockThreads);
   cfg.dynamicSmemBytes = 0;
   cfg.stream = stream;
@@ -574,9 +574,9 @@ inline void nvfp4_smooth_quantize(void* out, void* sf_out, void const* in, void 
     return;
   }
 
-  dim3 block(std::min(n / ELTS_PER_THREAD, 512));
-  int const numBlocksPerSM = std::max(1, 2048 / int(block.x));
-  dim3 grid(std::min(padUp(m, 128), multiProcessorCount * numBlocksPerSM));
+  dim3 block(fi_min(n / ELTS_PER_THREAD, 512));
+  int const numBlocksPerSM = fi_max(1, 2048 / int(block.x));
+  dim3 grid(fi_min(padUp(m, 128), multiProcessorCount * numBlocksPerSM));
   cudaLaunchConfig_t cfg = {};
   cfg.gridDim = grid;
   cfg.blockDim = block;

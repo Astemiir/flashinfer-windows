@@ -52,7 +52,7 @@ static constexpr int NumNemotronExperts = 512;
 static constexpr int NumKimiK2Experts = 384;
 static constexpr int NumDeepseekExperts = 256;
 static constexpr int MaxSupportedExpertCount =
-    std::max({NumNemotronExperts, NumKimiK2Experts, NumDeepseekExperts});
+    fi_max({NumNemotronExperts, NumKimiK2Experts, NumDeepseekExperts});
 static constexpr int NumTopGroupScores = 2;
 static constexpr int MaxNumTopGroups = 4;
 static constexpr int MaxNumGroups = 8;
@@ -459,7 +459,7 @@ static void launchCoopKernel(Data& data, int numBlocksCoop, int /*numThreadsHist
   // since the custom coop kernel dispatch selects template parameters based on these tiers.
   // DeepSeek's getMaxNumExperts uses different tiers (256, 384, 512) which would mismatch.
   uint32_t const customNumThreadsHist =
-      std::min(1024u, static_cast<uint32_t>(routingCustom::getMaxNumExperts(data.mNumExperts)));
+      fi_min(1024u, static_cast<uint32_t>(routingCustom::getMaxNumExperts(data.mNumExperts)));
   routingCustom::launchCoopKernel(customData, numBlocksCoop, customNumThreadsHist, stream);
 }
 
@@ -568,7 +568,7 @@ void run(Data& data, void* stream) {
 
   // Step 1: Run DeepSeek-specific topK computation (writes to mPtrTopKPacked)
   int const numThreadsMain =
-      std::max(data.mNumExpertGroups * WarpSize, getMaxNumExperts(data.mNumExperts));
+      fi_max(data.mNumExpertGroups * WarpSize, getMaxNumExperts(data.mNumExperts));
   launchMainKernel(data, numBlocks, numThreadsMain, stream);
 
   // After main kernel: bump expert/topK counts to include shared experts
@@ -608,10 +608,10 @@ void run(Data& data, void* stream) {
         const int32_t offsetEltsPerBlock = NumEltsPerOffsetTilePerThread * numThreadsHist;
         const int32_t maxNumBlocks = 1024;
 
-        int const numBlocksHistogram = std::min(
+        int const numBlocksHistogram = fi_min(
             (expandedIdxSize + histogramEltsPerBlock - 1) / histogramEltsPerBlock, maxNumBlocks);
         int const numBlocksOffsets =
-            std::min((expandedIdxSize + offsetEltsPerBlock - 1) / offsetEltsPerBlock, maxNumBlocks);
+            fi_min((expandedIdxSize + offsetEltsPerBlock - 1) / offsetEltsPerBlock, maxNumBlocks);
 
         launchHistogramKernel(data, numBlocksHistogram, numThreadsHist, stream);
         launchOffsetsKernel(data, numBlocksOffsets, numThreadsHist, stream);

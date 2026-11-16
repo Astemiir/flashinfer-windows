@@ -251,7 +251,7 @@ __global__ void SingleDecodeWithKVCacheKernel(const __grid_constant__ Params par
   // (tile_size_per_bdx=1) below that, smem_md would overlap st.o and st.o would run past
   // the allocation (illegal smem write). Reserve max(K+V data, st.o float) for the region.
   constexpr uint32_t smem_kv_region =
-      std::max(2 * num_stages_smem * bdy * tile_size_per_bdx * bdz * head_dim * sizeof(DTypeKV),
+      fi_max(2 * num_stages_smem * bdy * tile_size_per_bdx * bdz * head_dim * sizeof(DTypeKV),
                bdz * bdy * head_dim * sizeof(float));
   float* smem_md = (float*)(smem + smem_kv_region);
 
@@ -444,7 +444,7 @@ __device__ __inline__ void BatchDecodeWithPagedKVCacheDevice(const Params& param
   // sync_state (bdz > 1) reuses the K+V buffer as float storage for st.o; reserve
   // max(K+V data, st.o float) so kv_offset_smem/smem_md do not overlap st.o (see single decode).
   constexpr uint32_t smem_kv_region =
-      std::max(2 * num_stages_smem * tile_size_per_bdx * bdy * bdz * head_dim * sizeof(DTypeKV),
+      fi_max(2 * num_stages_smem * tile_size_per_bdx * bdy * bdz * head_dim * sizeof(DTypeKV),
                bdz * bdy * head_dim * sizeof(float));
   size_t* kv_offset_smem = (size_t*)(smem + smem_kv_region);
   float* smem_md = (float*)(smem + smem_kv_region);
@@ -679,9 +679,9 @@ cudaError_t SingleDecodeWithKVCacheDispatched(Params params, typename Params::DT
 
 #ifdef _WIN32
   constexpr uint32_t vec_size =
-      std::max(16UL / sizeof(DTypeKV), (unsigned long long)HEAD_DIM / 32UL);
+      fi_max(16UL / sizeof(DTypeKV), (unsigned long long)HEAD_DIM / 32UL);
 #else
-  constexpr uint32_t vec_size = std::max(16UL / sizeof(DTypeKV), HEAD_DIM / 32UL);
+  constexpr uint32_t vec_size = fi_max(16UL / sizeof(DTypeKV), HEAD_DIM / 32UL);
 #endif
   constexpr uint32_t bdx = HEAD_DIM / vec_size;
   auto compute_capacity = GetCudaComputeCapability();
@@ -689,14 +689,14 @@ cudaError_t SingleDecodeWithKVCacheDispatched(Params params, typename Params::DT
   DISPATCH_GQA_GROUP_SIZE(num_qo_heads / num_kv_heads, GROUP_SIZE, {
     constexpr uint32_t bdy = GROUP_SIZE;
     constexpr uint32_t num_threads =
-        std::max(get_heuristic_num_threads(GROUP_SIZE, sizeof(DTypeKV)), bdx * bdy);
+        fi_max(get_heuristic_num_threads(GROUP_SIZE, sizeof(DTypeKV)), bdx * bdy);
     constexpr uint32_t bdz = num_threads / (bdx * bdy);
     // For HEAD_DIM >= 512, halve the KV tile to fit in smem.
     constexpr uint32_t tile_size_per_bdx =
         GROUP_SIZE == 1 ? (sizeof(DTypeKV) == 1 ? 2U : (HEAD_DIM >= 512 ? 4U : 8U)) : 1U;
     DISPATCH_COMPUTE_CAP_DECODE_NUM_STAGES_SMEM(compute_capacity, NUM_STAGES_SMEM, {
       // K+V buffer must also hold sync_state's float st.o (see kernel comment); take the max.
-      const uint32_t smem_size = std::max(2U * NUM_STAGES_SMEM * bdy * tile_size_per_bdx * bdz *
+      const uint32_t smem_size = fi_max(2U * NUM_STAGES_SMEM * bdy * tile_size_per_bdx * bdz *
                                               HEAD_DIM * sizeof(DTypeKV),
                                           bdz * bdy * HEAD_DIM * sizeof(float)) +
                                  2U * bdy * bdz * sizeof(float);
@@ -771,24 +771,24 @@ cudaError_t BatchDecodeWithPagedKVCacheDispatched(Params params, typename Params
 
 #ifdef _WIN32
   constexpr uint32_t vec_size =
-      std::max(16UL / sizeof(DTypeKV), (unsigned long long)HEAD_DIM / 32UL);
+      fi_max(16UL / sizeof(DTypeKV), (unsigned long long)HEAD_DIM / 32UL);
 #else
-  constexpr uint32_t vec_size = std::max(16UL / sizeof(DTypeKV), HEAD_DIM / 32UL);
+  constexpr uint32_t vec_size = fi_max(16UL / sizeof(DTypeKV), HEAD_DIM / 32UL);
 #endif
   auto compute_capacity = GetCudaComputeCapability();
   constexpr uint32_t bdx = HEAD_DIM / vec_size;
   static_assert(bdx <= 32);
   DISPATCH_GQA_GROUP_SIZE(num_qo_heads / num_kv_heads, GROUP_SIZE, {
     constexpr uint32_t bdy = GROUP_SIZE;
-    constexpr uint32_t num_threads = std::max(128U, bdx * bdy);
+    constexpr uint32_t num_threads = fi_max(128U, bdx * bdy);
     constexpr uint32_t bdz = num_threads / (bdx * bdy);
     constexpr uint32_t tile_size_per_bdx = GROUP_SIZE == 1 ? (sizeof(DTypeKV) == 1 ? 2U : 4U) : 1U;
     DISPATCH_COMPUTE_CAP_DECODE_NUM_STAGES_SMEM(compute_capacity, NUM_STAGES_SMEM, {
       // K+V buffer must also hold sync_state's float st.o (see kernel comment); take the max.
       const uint32_t smem_size =
-          std::max(2 * NUM_STAGES_SMEM * tile_size_per_bdx * bdy * bdz * HEAD_DIM * sizeof(DTypeKV),
+          fi_max(2 * NUM_STAGES_SMEM * tile_size_per_bdx * bdy * bdz * HEAD_DIM * sizeof(DTypeKV),
                    bdz * bdy * HEAD_DIM * sizeof(float)) +
-          std::max(tile_size_per_bdx * num_threads * sizeof(DTypeKV*),
+          fi_max(tile_size_per_bdx * num_threads * sizeof(DTypeKV*),
                    2 * bdy * bdz * sizeof(float));
       auto kernel =
           BatchDecodeWithPagedKVCacheKernel<POS_ENCODING_MODE, NUM_STAGES_SMEM, tile_size_per_bdx,
@@ -1139,9 +1139,9 @@ cudaError_t BatchDecodeWithPagedKVCacheDispatchedMLA(Params params, typename Par
 
 #ifdef _WIN32
   constexpr uint32_t vec_size_ckv =
-      std::max(16UL / sizeof(DTypeKV), (unsigned long long)HEAD_DIM_CKV / 32UL);
+      fi_max(16UL / sizeof(DTypeKV), (unsigned long long)HEAD_DIM_CKV / 32UL);
 #else
-  constexpr uint32_t vec_size_ckv = std::max(16UL / sizeof(DTypeKV), HEAD_DIM_CKV / 32UL);
+  constexpr uint32_t vec_size_ckv = fi_max(16UL / sizeof(DTypeKV), HEAD_DIM_CKV / 32UL);
 #endif
   constexpr uint32_t bdx = HEAD_DIM_CKV / vec_size_ckv;
   constexpr uint32_t vec_size_kpe = HEAD_DIM_KPE / bdx;
@@ -1149,7 +1149,7 @@ cudaError_t BatchDecodeWithPagedKVCacheDispatchedMLA(Params params, typename Par
   constexpr uint32_t bdy = 8;
   constexpr uint32_t tile_size_qo_heads = 2;
   constexpr uint32_t qo_heads_per_block = bdy * tile_size_qo_heads;
-  constexpr uint32_t num_threads = std::max(128U, bdx * bdy);
+  constexpr uint32_t num_threads = fi_max(128U, bdx * bdy);
   constexpr uint32_t bdz = num_threads / (bdx * bdy);
   const uint32_t gdy = ceil_div(num_qo_heads, qo_heads_per_block);
 
@@ -1157,7 +1157,7 @@ cudaError_t BatchDecodeWithPagedKVCacheDispatchedMLA(Params params, typename Par
   DISPATCH_COMPUTE_CAP_DECODE_NUM_STAGES_SMEM(compute_capacity, NUM_STAGES_SMEM, {
     const uint32_t smem_size =
         NUM_STAGES_SMEM * bdy * bdz * (HEAD_DIM_CKV + HEAD_DIM_KPE) * sizeof(DTypeKV) +
-        std::max(num_threads * sizeof(size_t) * 2, 2 * bdy * bdz * sizeof(float));
+        fi_max(num_threads * sizeof(size_t) * 2, 2 * bdy * bdz * sizeof(float));
 
     auto kernel =
         BatchDecodeWithPagedKVCacheKernelMLA<NUM_STAGES_SMEM, vec_size_ckv, vec_size_kpe, bdx, bdy,

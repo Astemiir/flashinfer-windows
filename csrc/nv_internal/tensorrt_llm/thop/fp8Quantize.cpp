@@ -116,7 +116,7 @@ void mxfp8_quantize_host(TensorView x_fp32, TensorView fp8_tensor, TensorView sc
 
       float local_amax = 0.0f;
       for (int ki = 0; ki < sf_vec_size; ++ki) {
-        local_amax = std::max(std::abs(fp32_ptr[ki]), local_amax);
+        local_amax = fi_max(std::abs(fp32_ptr[ki]), local_amax);
       }
 
       local_amax *= (1.f / 448.0f);

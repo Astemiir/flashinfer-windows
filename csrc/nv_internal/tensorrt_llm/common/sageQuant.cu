@@ -375,7 +375,7 @@ void invokeSageQuantQkvImpl(SageQuantParams const& params) {
       }
       int const numHeadSeqs = params.numHeads * params.batchSize;
       uint32_t const gridX =
-          static_cast<uint32_t>(std::max(1, (params.smCount * 32) / numHeadSeqs));
+          static_cast<uint32_t>(fi_max(1, (params.smCount * 32) / numHeadSeqs));
       constexpr uint32_t GridZ = VStage_ == 0 ? 1U : (SmoothK_ && VStage_ == 1 ? 3U : 2U);
       dim3 const launchGrid{gridX, static_cast<uint32_t>(numHeadSeqs), GridZ};
       auto status =

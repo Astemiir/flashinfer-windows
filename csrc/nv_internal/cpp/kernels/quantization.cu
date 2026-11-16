@@ -42,7 +42,7 @@ void invokeQuantization(int8_t* dst, T const* src, int64_t const size, float con
                        "[ERROR][invokeQuantization] size should be a multiple of 4.\n");
 
   int numBlocks{static_cast<int>((size + 255) / 256)};
-  dim3 grid(std::min(numBlocks, maxGridSize));
+  dim3 grid(fi_min(numBlocks, maxGridSize));
   TLLM_CHECK_WITH_INFO(grid.x <= maxGridSize,
                        "[ERROR][invokeQuantization] grid max size is exceeded\n");
   dim3 block(64);
@@ -240,9 +240,9 @@ void invokeMxFP8Quantization(int b, int m, int n, int padded_n, T const* input, 
   // Each thread converts 8/16 values.
   dim3 block(128);
   // Get number of blocks per SM (assume we can fully utilize the SM).
-  int const numBlocksPerSM = std::max(1u, 2048u / block.x);
+  int const numBlocksPerSM = fi_max(1u, 2048u / block.x);
   int effectiveRows = computeEffectiveRows(m, layout);
-  dim3 grid(std::min(effectiveRows, multiProcessorCount * numBlocksPerSM));
+  dim3 grid(fi_min(effectiveRows, multiProcessorCount * numBlocksPerSM));
 
   // Launch the cvt kernel.
   cudaLaunchConfig_t config;
@@ -477,7 +477,7 @@ void launchFP4QuantizationTma(int b, int m, int n, T const* input, float const* 
   dim3 block(288);
   // Each block handles TMA_ROW_TILE rows
   int numRowTiles = (effectiveRows + TMA_ROW_TILE - 1) / TMA_ROW_TILE;
-  dim3 grid(std::min(numRowTiles, multiProcessorCount * 2));
+  dim3 grid(fi_min(numRowTiles, multiProcessorCount * 2));
 
   // Dynamic shared memory size
   size_t smem_size = get_tma_smem_size<T>();
@@ -563,11 +563,11 @@ void invokeFP4Quantization(int b, int m, int n, T const* input, float const* SFS
     // Original non-TMA path for small m or SF_VEC_SIZE != 16
     // Grid, Block size.
     // Each thread converts 16 values.
-    dim3 block(std::min(int(n / CVT_FP8_TO_FP4_ELTS_PER_THREAD), 512));
+    dim3 block(fi_min(int(n / CVT_FP8_TO_FP4_ELTS_PER_THREAD), 512));
     // Get number of blocks per SM (assume we can fully utilize the SM).
-    int const numBlocksPerSM = std::max(1u, 2048u / block.x);
+    int const numBlocksPerSM = fi_max(1u, 2048u / block.x);
     int effectiveRows = computeEffectiveRows(m, layout);
-    dim3 grid(std::min(effectiveRows, multiProcessorCount * numBlocksPerSM));
+    dim3 grid(fi_min(effectiveRows, multiProcessorCount * numBlocksPerSM));
 
     auto launchKernel = [&](auto useUE8M0Tag, auto useRowWiseScaleTag, auto useInverseScaleTag,
                             auto disableFP4QuantFastMathTag, auto nvfp4_4over6_config_tag) {
@@ -613,11 +613,11 @@ void invokeFP4Quantization(int b, int m, int n, T const* input, float const* SFS
     // Original non-TMA path for small m or SF_VEC_SIZE != 16
     // Grid, Block size.
     // Each thread converts 8 values.
-    dim3 block(std::min(int(n / CVT_FP16_TO_FP4_ELTS_PER_THREAD), 512));
+    dim3 block(fi_min(int(n / CVT_FP16_TO_FP4_ELTS_PER_THREAD), 512));
     // Get number of blocks per SM (assume we can fully utilize the SM).
-    int const numBlocksPerSM = std::max(1u, 2048u / block.x);
+    int const numBlocksPerSM = fi_max(1u, 2048u / block.x);
     int effectiveRows = computeEffectiveRows(m, layout);
-    dim3 grid(std::min(effectiveRows, multiProcessorCount * numBlocksPerSM));
+    dim3 grid(fi_min(effectiveRows, multiProcessorCount * numBlocksPerSM));
 
     // Launch the cvt kernel.
     cudaLaunchConfig_t config;
@@ -706,10 +706,10 @@ template <typename T>
 void invokeBlockScaleInterleave(int b, int m, int m_padded, int n, int n_padded, T const* SFIn,
                                 T* SFOutput, int multiProcessorCount, cudaStream_t stream) {
   // Each thread reads 1 int8 value
-  dim3 block(std::min(n_padded, 1024));
+  dim3 block(fi_min(n_padded, 1024));
   // Get number of blocks per SM (assume we can fully utilize the SM).
-  int const numBlocksPerSM = std::max(1u, 4096u / block.x);
-  dim3 grid(std::min(m_padded, multiProcessorCount * numBlocksPerSM));
+  int const numBlocksPerSM = fi_max(1u, 4096u / block.x);
+  dim3 grid(fi_min(m_padded, multiProcessorCount * numBlocksPerSM));
 
   block_scale_interleave_kernel<T>
       <<<grid, block, 0, stream>>>(b, m, m_padded, n, n_padded, SFIn, SFOutput);
@@ -729,10 +729,10 @@ template void invokeBlockScaleInterleave<__nv_bfloat16>(int b, int m, int m_padd
 void invokeBlockScaleInterleaveReverse(int b, int m, int n, uint8_t const* SFIn, uint8_t* SFOutput,
                                        int multiProcessorCount, cudaStream_t stream) {
   // Each thread reads 1 int8 value
-  dim3 block(std::min(n, 1024));
+  dim3 block(fi_min(n, 1024));
   // Get number of blocks per SM (assume we can fully utilize the SM).
-  int const numBlocksPerSM = std::max(1u, 4096u / block.x);
-  dim3 grid(std::min(m, multiProcessorCount * numBlocksPerSM));
+  int const numBlocksPerSM = fi_max(1u, 4096u / block.x);
+  dim3 grid(fi_min(m, multiProcessorCount * numBlocksPerSM));
 
   block_scale_interleave_reverse_kernel<<<grid, block, 0, stream>>>(b, m, n, SFIn, SFOutput);
 }
@@ -752,10 +752,10 @@ void invokeSiluAndMulNVFP4Quantization(void* output, void* output_scale, void* i
   TLLM_CHECK_WITH_INFO(k > 0, "k must be > 0");
   int const workSizePerRow = max(1, k / CVT_FP16_TO_FP4_ELTS_PER_THREAD);
   int const totalWorkSize = m_topk * workSizePerRow;
-  dim3 block(std::min(workSizePerRow, 512));
+  dim3 block(fi_min(workSizePerRow, 512));
   // Get number of blocks per SM (assume we can fully utilize the SM).
   int const numBlocksPerSM = 2048 / block.x;
-  dim3 grid(std::min(static_cast<int>((totalWorkSize + block.x - 1) / block.x),
+  dim3 grid(fi_min(static_cast<int>((totalWorkSize + block.x - 1) / block.x),
                      multiProcessorCount * numBlocksPerSM));
   while (grid.x <= multiProcessorCount && block.x > 64) {
     grid.x *= 2;

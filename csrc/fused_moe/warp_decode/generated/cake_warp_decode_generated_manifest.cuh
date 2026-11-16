@@ -218,7 +218,7 @@ inline int32_t Fc1LaunchGridN(const warp_decode::Schedule& schedule,
                               const WorkspaceView& ws) {
   if (schedule.route_layout == warp_decode::RouteLayout::kDirect) return ws.route_extent;
   const int32_t grid_m = schedule.geometry == warp_decode::Geometry::kH2048I512E512K10 ? 8 : 24;
-  return std::min(ws.route_tiles, std::max(1, schedule.workfeed_ctas / grid_m));
+  return fi_min(ws.route_tiles, fi_max(1, schedule.workfeed_ctas / grid_m));
 }
 inline int32_t Fc2LaunchGridN(const warp_decode::Schedule& schedule,
                               const WorkspaceView& ws) {
@@ -226,7 +226,7 @@ inline int32_t Fc2LaunchGridN(const warp_decode::Schedule& schedule,
       schedule.fc2 == warp_decode::Fc2Schedule::kRouteParallelK768K96 ||
       schedule.fc2 == warp_decode::Fc2Schedule::kRouteParallelK768K96PaddedScale)
     return ws.route_extent;
-  return std::min(ws.route_tiles, std::max(1, schedule.workfeed_ctas / 16));
+  return fi_min(ws.route_tiles, fi_max(1, schedule.workfeed_ctas / 16));
 }
 inline int32_t* TileExpert(const warp_decode::Invocation& inv,
                            const warp_decode::Schedule& schedule,

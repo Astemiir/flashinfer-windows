@@ -811,14 +811,14 @@ cudaError_t lamport_style_one_shot_all_reduce_norm_kernel_launcher(AllReducePara
   int token_num = params.elts_total / params.fusion_params.hidden_size;
   int warp_min_number = heuristic_min_warp_number(RanksPerNode, params.fusion_params.hidden_size);
   // Clamp to the largest cluster the device can launch.
-  static const int max_cluster_size = std::min(
+  static const int max_cluster_size = fi_min(
       GetMaxClusterSize(
           reinterpret_cast<void const*>(
               lamport_style_one_shot_all_reduce_norm_kernel<1, T, RanksPerNode, Bias, Affine>),
           details::kWarpSize),
       details::kClusterMaxSize);
   int cluster_size =
-      std::min(((warps_per_token + warp_min_number - 1) / warp_min_number), max_cluster_size);
+      fi_min(((warps_per_token + warp_min_number - 1) / warp_min_number), max_cluster_size);
   int cta_size = warps_per_token / cluster_size * details::kWarpSize;
   FLASHINFER_CHECK(cta_size <= details::kMaxCtaSize, "cta_size must be less than or equal to ",
                    details::kMaxCtaSize);
@@ -873,7 +873,7 @@ __global__ void __launch_bounds__(1024, 1)
   int bid = blockIdx.x, tid = threadIdx.x;
   int norm_num = params.elts_total / params.fusion_params.hidden_size;
   int norm_per_block = (norm_num + gridDim.x - 1) / gridDim.x;
-  int norm_this_block = std::min(norm_per_block, norm_num - bid * norm_per_block);
+  int norm_this_block = fi_min(norm_per_block, norm_num - bid * norm_per_block);
 
   T const* local_input_buffer = reinterpret_cast<T const*>(params.local_input_buffer_ptr);
   T const* bias_buffer = reinterpret_cast<T const*>(params.fusion_params.bias_buffer);
@@ -967,7 +967,7 @@ __global__ void __launch_bounds__(1024, 1)
   int bid = blockIdx.x, tid = threadIdx.x;
   int norm_num = params.elts_total / params.fusion_params.hidden_size;
   int norm_per_block = (norm_num + gridDim.x - 1) / gridDim.x;
-  int norm_this_block = std::min(norm_per_block, norm_num - bid * norm_per_block);
+  int norm_this_block = fi_min(norm_per_block, norm_num - bid * norm_per_block);
 
   T const* local_input_buffer = reinterpret_cast<T const*>(params.local_input_buffer_ptr);
   T const* bias_buffer = reinterpret_cast<T const*>(params.fusion_params.bias_buffer);
@@ -1089,7 +1089,7 @@ cudaError_t one_shot_all_reduce_norm_kernel_launcher(AllReduceParams<T>& params,
       cta_size = details::kMaxCtaSize;
     }
     int norm_num = params.elts_total / params.fusion_params.hidden_size;
-    int cta_num = std::min(norm_num, static_cast<int>(MAX_ALL_REDUCE_BLOCKS));
+    int cta_num = fi_min(norm_num, static_cast<int>(MAX_ALL_REDUCE_BLOCKS));
     int smem_size = 0;
 
     if (cta_size * VEC_SIZE < params.fusion_params.hidden_size) {
@@ -1201,7 +1201,7 @@ static __global__ void oneShotAllReduceKernel(AllReduceParams<T> params) {
 
   // Start and end offsets of the thread
   size_t const chunk_start = bidx * params.elts_per_block + tidx * VEC_SIZE;
-  size_t const chunk_end = std::min((bidx + 1) * params.elts_per_block, params.elts_total);
+  size_t const chunk_end = fi_min((bidx + 1) * params.elts_per_block, params.elts_total);
 
   T* buffers[RANKS_PER_NODE];
 #pragma unroll
@@ -1473,8 +1473,8 @@ std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo, AllReducePar
       FLASHINFER_CHECK(params.elts_total % elts_per_thread == 0,
                        "hidden_size must be a multiple of ", elts_per_thread);
       size_t const total_threads = round_up(params.elts_total / elts_per_thread, WARP_SIZE);
-      threads_per_block = std::min(DEFAULT_BLOCK_SIZE, total_threads);
-      blocks_per_grid = std::min(static_cast<size_t>(MAX_ALL_REDUCE_BLOCKS),
+      threads_per_block = fi_min(DEFAULT_BLOCK_SIZE, total_threads);
+      blocks_per_grid = fi_min(static_cast<size_t>(MAX_ALL_REDUCE_BLOCKS),
                                  ceil_div(total_threads, threads_per_block));
       params.elts_per_block =
           round_up(ceil_div(params.elts_total, blocks_per_grid), elts_per_thread);
@@ -1488,8 +1488,8 @@ std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo, AllReducePar
           round_up(params.elts_total / (elts_per_thread * params.ranks_per_node), WARP_SIZE);
 
       /*
-      threads_per_block = std::min(DEFAULT_BLOCK_SIZE, total_threads);
-      blocks_per_grid = std::min(static_cast<size_t>(MAX_ALL_REDUCE_BLOCKS), ceil_div(total_threads,
+      threads_per_block = fi_min(DEFAULT_BLOCK_SIZE, total_threads);
+      blocks_per_grid = fi_min(static_cast<size_t>(MAX_ALL_REDUCE_BLOCKS), ceil_div(total_threads,
       threads_per_block));
       */
       while (total_threads % blocks_per_grid != 0 ||

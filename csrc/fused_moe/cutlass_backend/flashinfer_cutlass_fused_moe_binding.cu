@@ -396,7 +396,7 @@ class FusedMoeRunner : public tvm::ffi::ModuleObj {
           << "inter_size must be divisible by 128 for MXFP4 weights";
     } else {
       // TMA requires at least 128 bit alignment
-      auto min_alignment = 128 / (8 * std::min(mActivationDtype.bits * mActivationDtype.lanes / 8,
+      auto min_alignment = 128 / (8 * fi_min(mActivationDtype.bits * mActivationDtype.lanes / 8,
                                                mWeightDtype.bits * mWeightDtype.lanes / 8));
       TVM_FFI_ICHECK_EQ(hidden_size % min_alignment, 0)
           << "hidden_size " << hidden_size << " must be divisible by " << min_alignment

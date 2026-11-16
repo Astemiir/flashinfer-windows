@@ -144,7 +144,7 @@ struct CollectiveMainloop {
     static constexpr int CTA_KV = get<1>(TileShape_QKD{});
     int num_kv_tiles = cute::ceil_div(kv_len, CTA_KV);
     if constexpr (CAUSAL) {
-      num_kv_tiles = std::min(num_kv_tiles,
+      num_kv_tiles = fi_min(num_kv_tiles,
                               cute::ceil_div((q_tile_idx + 1) * CTA_Q + kv_len - qo_len, CTA_KV));
     }
 

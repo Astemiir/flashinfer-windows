@@ -182,7 +182,7 @@ cudaError_t CutlassFP8GroupwiseScaledGroupGEMMSM100(
   auto layout_SFB = allocator.aligned_alloc<LayoutSFB>(num_groups * sizeof(LayoutSFB), 16,
                                                        "sm100_groupwise_group_gemm_layout_SFB");
 
-  int num_threads = std::min(num_groups, 1024);
+  int num_threads = fi_min(num_groups, 1024);
   int num_blocks = (num_groups + num_threads - 1) / num_threads;
   cudaLaunchConfig_t config;
   config.gridDim = num_blocks;

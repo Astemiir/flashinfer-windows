@@ -184,7 +184,7 @@ __global__ void __launch_bounds__(Ktraits::NUM_WARPS* cutlass::NumThreadsPerWarp
           auto prefix_len = __ldg(maybe_prefix_len_ptr + batch_idx);
           auto max_item_len = __ldg(maybe_max_item_len_ptr + batch_idx);
           auto valid_items_window_len =
-              std::max(0, q_tile_idx * CTA_Q + kv_len - qo_len - max_item_len);
+              fi_max(0, q_tile_idx * CTA_Q + kv_len - qo_len - max_item_len);
           num_kv_tiles_outside_items_window = valid_items_window_len / CTA_KV;
           num_kv_tiles_prefix = cute::ceil_div(prefix_len, CTA_KV);
         }
@@ -269,7 +269,7 @@ __global__ void __launch_bounds__(Ktraits::NUM_WARPS* cutlass::NumThreadsPerWarp
         auto prefix_len = __ldg(maybe_prefix_len_ptr + batch_idx);
         auto max_item_len = __ldg(maybe_max_item_len_ptr + batch_idx);
         auto valid_items_window_len =
-            std::max(0, q_tile_idx * CTA_Q + kv_len - qo_len - max_item_len);
+            fi_max(0, q_tile_idx * CTA_Q + kv_len - qo_len - max_item_len);
         num_kv_tiles_outside_items_window = valid_items_window_len / CTA_KV;
         num_kv_tiles_prefix = cute::ceil_div(prefix_len, CTA_KV);
       }

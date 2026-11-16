@@ -53,7 +53,7 @@ inline cudaError_t ComputeLSEFromMD(float2* md, float* lse, int num_tokens, int 
                                     int64_t lse_stride_tokens, int64_t lse_stride_heads,
                                     bool launch_with_pdl, cudaStream_t stream) {
   int n = num_tokens * num_heads_q;
-  int num_threads = std::min(1024, UpPowerOfTwo(n));
+  int num_threads = fi_min(1024, UpPowerOfTwo(n));
   int num_blocks = ceil_div(n, num_threads);
   cudaLaunchConfig_t config;
   config.gridDim = num_blocks;

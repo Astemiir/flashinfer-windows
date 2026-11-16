@@ -259,7 +259,7 @@ struct CollectiveMainloopFwd {
     int const seqlen_k = get<0>(mainloop_params.shape_K);
     int n_block_max = cute::ceil_div(seqlen_k, kBlockN);
     if constexpr (Is_causal) {
-      n_block_max = std::min(
+      n_block_max = fi_min(
           n_block_max, cute::ceil_div((m_block + 1) * kBlockM + seqlen_k - seqlen_q, kBlockN));
     }
     return n_block_max;
@@ -774,7 +774,7 @@ struct CollectiveMainloopFwd {
         } else {
           int const row = (thread_idx >> 5) * 16 + ((i & 8) != 0 ? 8 : 0) + (lane >> 2);
           if (col >=
-              std::min(seqlen_k - n_block_local * kBlockN, col_limit_causal(row, n_block_local))) {
+              fi_min(seqlen_k - n_block_local * kBlockN, col_limit_causal(row, n_block_local))) {
             scores(i) = -INFINITY;
           }
         }

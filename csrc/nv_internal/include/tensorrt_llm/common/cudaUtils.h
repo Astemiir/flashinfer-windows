@@ -448,8 +448,8 @@ void printArrayInfo(T const* ptr, uint64_t nElement = 1, std::string name = "",
     sum += val;
     sqrSum += val * val;
     absSum += expf(val);
-    allMax = std::max(allMax, val);
-    allMin = std::min(allMin, val);
+    allMax = fi_max(allMax, val);
+    allMin = fi_min(allMin, val);
     allSad += abs(val - old);
     old = val;
   }
@@ -465,7 +465,7 @@ void printArrayInfo(T const* ptr, uint64_t nElement = 1, std::string name = "",
     uint64_t constexpr nHead = 5;
     std::stringstream ss;
     ss << std::setw(10) << std::fixed << std::setprecision(3);
-    for (uint64_t i = 0; i < std::min(nElement, nHead); ++i) {
+    for (uint64_t i = 0; i < fi_min(nElement, nHead); ++i) {
       ss << (float)tmp[i] << ", ";
     }
     if (nElement > nHead) {

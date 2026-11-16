@@ -821,7 +821,7 @@ class Fp8Gemm {
 template <typename T>
 __forceinline__ __device__ T find_max_elem_in_warp(T value) {
   for (int offset = 16; offset > 0; offset /= 2) {
-    value = T(std::max(float(value), __shfl_down_sync(0xFFFFFFFF, float(value), offset)));
+    value = T(fi_max(float(value), __shfl_down_sync(0xFFFFFFFF, float(value), offset)));
   }
   value = T(__shfl_sync(0xffffffff, float(value), 0));
   return value;
@@ -1100,7 +1100,7 @@ __global__ void scale_128x128_kernel(OutputType* output, ScaleType* scales,
         if (scales_idx_x * 128 + i * 32 + lane_id >= dim_x) {
           break;
         } else {
-          input_amax = InputType(std::max(float(input_amax), std::fabs(float(input_d[lane_id]))));
+          input_amax = InputType(fi_max(float(input_amax), std::fabs(float(input_d[lane_id]))));
         }
         input_d += 32;
       }
@@ -1518,7 +1518,7 @@ void fp8_grouped_gemm_run(__nv_bfloat16 const* mat_a, __nv_fp8_e4m3* fp8_mat_a, 
     kernel_utils::find_divisor(scale_dim_x_mul, scale_dim_x_shr, scales_dim_x);
 
     int smem_size = num_problems * sizeof(int64_t);
-    int num_blocks = std::min(static_cast<int64_t>(kNumDeviceSMs),
+    int num_blocks = fi_min(static_cast<int64_t>(kNumDeviceSMs),
                               div_up(max_shape_m * scales_dim_x, NumThreads / 32));
     // Binary search is expected to have lower complexity when max_shape_m is small
     bool use_binary_search =

@@ -194,7 +194,7 @@ struct genericMoeGemmKernelLauncher {
       // hardware resource differences. Using GemmGrouped::maximum_active_blocks() ensures
       // the occupancy query returns 0 for these configs, allowing the static heuristic to
       // correctly skip them rather than selecting a config that will fail at execution time.
-      int occupancy = std::min(2, GemmGrouped::maximum_active_blocks());
+      int occupancy = fi_min(2, GemmGrouped::maximum_active_blocks());
       if (inputs.occupancy != nullptr) {
         *inputs.occupancy = occupancy;
         return;
@@ -1027,7 +1027,7 @@ size_t MoeGemmRunner<T, WeightType, OutputType, ScaleBiasType, IsMXFPX,
           cutlass_kernels_oss::calcMaxWorkspaceSizeTmaWarpSpecialized<T, WeightType, OutputType, \
                                                                       FUSION>(                   \
               num_experts, conf, multi_processor_count_, fpX_block_scaling_type);                \
-      max_size = std::max(max_size, size);                                                       \
+      max_size = fi_max(max_size, size);                                                       \
       has_config = true;                                                                         \
     } catch (tensorrt_llm::common::TllmException const& e) {                                     \
       TLLM_LOG_TRACE("Unsupported config skipped when calculating MOE workspace size %s",        \

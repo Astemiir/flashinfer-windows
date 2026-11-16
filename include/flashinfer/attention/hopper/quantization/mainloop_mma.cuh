@@ -107,7 +107,7 @@ CUTLASS_DEVICE void mma_fp8(const Params& mainloop_params, AttentionVariant& var
           tSrS(i) = AttentionUpdater::fill_value;
         }
       } else {
-        if (kv_idx >= std::min(kv_len, col_limit_right(qo_idx))) {
+        if (kv_idx >= fi_min(kv_len, col_limit_right(qo_idx))) {
           tSrS(i) = AttentionUpdater::fill_value;
         }
       }

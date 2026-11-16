@@ -346,7 +346,7 @@ struct MixedCommArgs {
     }
     buffer_info = reinterpret_cast<uint2*>(mem_buffer_all + NUM_BUFFERS * vm_buffer_size_all);
     int max_block_size = max_block_size_dict_[1];
-    int min_block_size = std::min(min_block_size_, max_block_size);
+    int min_block_size = fi_min(min_block_size_, max_block_size);
     int64_t num_accesses_all = floor_div<elems_per_thd>(num_elems_all);
     int coef_tp;
     if constexpr (is_opt_waits_mode(mode)) {

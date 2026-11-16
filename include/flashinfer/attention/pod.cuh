@@ -36,7 +36,7 @@ enum Operation {
 
 template <typename KTraits_P, typename KTraits_D, bool PartitionKV_P, typename PrefillParams,
           typename DecodeParams>
-__global__ __launch_bounds__(std::max(
+__global__ __launch_bounds__(fi_max(
     KTraits_P::NUM_THREADS,
     KTraits_D::NUM_THREADS)) void PODWithKVCacheTensorKernel(const uint32_t xsize,
                                                              const __grid_constant__ PrefillParams
@@ -349,8 +349,8 @@ cudaError_t PODWithKVCacheTensorDispatched(PrefillParams prefill_params,
             // FLASHINFER_CUDA_CALL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
             //     &num_blocks_per_sm, kernel, num_threads_p, smem_size_p));
             //  Above function returns 0 for some reason, so we use a workaround
-            num_blocks_per_sm = std::max(
-                1, std::min((int)(max_smem_per_sm / smem_size_p), (int)(256 / num_threads_p)));
+            num_blocks_per_sm = fi_max(
+                1, fi_min((int)(max_smem_per_sm / smem_size_p), (int)(256 / num_threads_p)));
             uint32_t max_num_kv_chunks =
                 (num_blocks_per_sm * num_sm) /
                 (num_kv_heads * ceil_div(qo_len * group_size, KTraits_P::CTA_TILE_Q));

@@ -65,7 +65,7 @@ void runPostTopKPipeline(DataType const& data, void* stream) {
   // Different routing methods (DeepSeek, Llama4) may have different expert tier thresholds
   // that don't match routingCustom's tiers (128, 512, 2048).
   uint32_t const numThreadsHist =
-      std::min(1024u, static_cast<uint32_t>(routingCustom::getMaxNumExperts(data.mNumExperts)));
+      fi_min(1024u, static_cast<uint32_t>(routingCustom::getMaxNumExperts(data.mNumExperts)));
 
   // Determine which path to use based on token count
   static int const smMajor = tensorrt_llm::common::getSMVersion() / 10;
@@ -155,10 +155,10 @@ void runPostTopKPipeline(DataType const& data, void* stream) {
       int32_t const offsetEltsPerBlock = routing::NumEltsPerOffsetTilePerThread * numThreadsHist;
       int32_t const maxNumBlocks = 1024;
 
-      int const numBlocksHistogram = std::min(
+      int const numBlocksHistogram = fi_min(
           (expandedIdxSize + histogramEltsPerBlock - 1) / histogramEltsPerBlock, maxNumBlocks);
       int const numBlocksOffsets =
-          std::min((expandedIdxSize + offsetEltsPerBlock - 1) / offsetEltsPerBlock, maxNumBlocks);
+          fi_min((expandedIdxSize + offsetEltsPerBlock - 1) / offsetEltsPerBlock, maxNumBlocks);
 
       routingCustom::launchHistogramKernel(customData, numBlocksHistogram, numThreadsHist, stream);
       routingCustom::launchOffsetsKernel(customData, numBlocksOffsets, numThreadsHist, stream);

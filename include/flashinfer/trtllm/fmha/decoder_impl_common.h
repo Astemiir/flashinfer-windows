@@ -224,8 +224,8 @@ inline int computeMultiBlockCount(XQAParams const& xqaParams, int batch_size,
   // avoid using too many blocks for one sequence, otherwise the final reduction
   // may dominate.
   multi_block_count =
-      std::min(multi_block_count, static_cast<int>(std::round(std::sqrt(multi_block_count * 8.F))));
-  multi_block_count = std::max(multi_block_count, 1);
+      fi_min(multi_block_count, static_cast<int>(std::round(std::sqrt(multi_block_count * 8.F))));
+  multi_block_count = fi_max(multi_block_count, 1);
   // adjust to kTargetWaveFactor, as already initialized using
   // kMinHistoryTokensPerBlock, only need to decrease.
   double wave_count =
@@ -234,13 +234,13 @@ inline int computeMultiBlockCount(XQAParams const& xqaParams, int batch_size,
   if (adj_factor > 1.0) {
     multi_block_count = floor(multi_block_count / adj_factor);
   }
-  multi_block_count = std::max(multi_block_count, 1);
+  multi_block_count = fi_max(multi_block_count, 1);
 
   // Add limitation due to reserved workspace size.
   // When batch_size is large, multi-block is useless anyway. So large workspace
   // is not useful and we can set a hard limit for workspace size (computed from
   // maxNbSubSeq).
-  multi_block_count = std::max(std::min(multi_block_count, maxNbSubSeq / batch_size), 1);
+  multi_block_count = fi_max(fi_min(multi_block_count, maxNbSubSeq / batch_size), 1);
 
   FLASHINFER_CHECK(multi_block_count >= 1, "MultiBlock count should be larger than 1");
   FLASHINFER_CHECK(multi_block_count == 1 || batch_size * multi_block_count <= maxNbSubSeq,

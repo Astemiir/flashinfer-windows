@@ -246,7 +246,7 @@ size_t CutlassMxfp8GemmRunner<T, mxfp8GemmType>::getWorkspaceSizeImpl(int const 
       size_t curr_workspace_size = CutlassMxfp8GemmRunner<T, mxfp8GemmType>::dispatchToArch(
           nullptr, nullptr, nullptr, nullptr, nullptr, m, n, k, batch_count, gemmConfig, nullptr, 0,
           nullptr, nullptr);
-      workspace_size = std::max(workspace_size, curr_workspace_size);
+      workspace_size = fi_max(workspace_size, curr_workspace_size);
     } catch (std::runtime_error& e) {
       // Swallow errors when SMEM exceeds maximum allowed
       continue;

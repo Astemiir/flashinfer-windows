@@ -920,7 +920,7 @@ struct DefaultRoutingLaunchConfig {
   static constexpr int BlockDim = MaxNumExperts <= 1024 ? MaxNumExperts : 1024;
 
   static int blockDim(Data const& /*data*/, int numThreads) {
-    return std::max(numThreads, BlockDim);
+    return fi_max(numThreads, BlockDim);
   }
 
   static int gridDim(Data const& /*data*/, int numBlocks, int /*blockDim*/) { return numBlocks; }
@@ -969,7 +969,7 @@ struct DefaultRoutingLaunchConfig {
         dispatchTierPairs(static_cast<Pairs_*>(nullptr), data, [&](auto eTag_, auto kTag_) {   \
           constexpr int tierMaxExp_ = decltype(eTag_)::value;                                  \
           constexpr int tierThreads_ = tierMaxExp_ <= 1024 ? tierMaxExp_ : 1024;               \
-          int const effectiveThreads_ = std::max(static_cast<int>(numThreads), tierThreads_);  \
+          int const effectiveThreads_ = fi_max(static_cast<int>(numThreads), tierThreads_);  \
           LAUNCH_ROUTING_WITH_EXPERT_SELECT(data, coopLaunch, kernel, numBlocks,               \
                                             effectiveThreads_, smemSize, stream, ExpertSelect, \
                                             decltype(eTag_)::value, decltype(kTag_)::value);   \

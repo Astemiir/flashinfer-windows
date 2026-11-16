@@ -1149,7 +1149,7 @@ cudaError_t moereduction_allreduce_fusion_kernel_launcher(
           moereduce_allreduce_fusion_kernel_oneshot_lamport<T, NRanks, AllReduceOut, ResidualOut,
                                                             NormOut, QuantOut>),
       128);
-  int cluster_size = std::min(8, max_cluster_size);
+  int cluster_size = fi_min(8, max_cluster_size);
   while (warps_per_token % cluster_size != 0) {
     cluster_size /= 2;
   }
@@ -1157,7 +1157,7 @@ cudaError_t moereduction_allreduce_fusion_kernel_launcher(
   FLASHINFER_CHECK(block_size <= 1024 && cluster_size > 0,
                    "block_size <= 1024 && cluster_size > 0");
   int sm_count = get_sm_count();
-  int grid_size = (std::min(sm_count, cluster_num * cluster_size) / cluster_size) * cluster_size;
+  int grid_size = (fi_min(sm_count, cluster_num * cluster_size) / cluster_size) * cluster_size;
   cudaLaunchConfig_t cfg;
   cudaLaunchAttribute attribute[2];
   cfg.gridDim = grid_size;
@@ -1462,7 +1462,7 @@ cudaError_t moefinalize_allreduce_fusion_kernel_launcher(
           moefinalize_allreduce_fusion_kernel_oneshot_lamport<T, NRanks, ResidualOut, NormOut,
                                                               QuantOut, ScaleType>),
       128);
-  int cluster_size = std::min(8, max_cluster_size);
+  int cluster_size = fi_min(8, max_cluster_size);
   while (warps_per_token % cluster_size != 0) {
     cluster_size /= 2;
   }
@@ -1470,7 +1470,7 @@ cudaError_t moefinalize_allreduce_fusion_kernel_launcher(
   FLASHINFER_CHECK(block_size <= 1024 && cluster_size > 0,
                    "block_size <= 1024 && cluster_size > 0");
   int sm_count = get_sm_count();
-  int grid_size = (std::min(sm_count, cluster_num * cluster_size) / cluster_size) * cluster_size;
+  int grid_size = (fi_min(sm_count, cluster_num * cluster_size) / cluster_size) * cluster_size;
   cudaLaunchConfig_t cfg;
   cudaLaunchAttribute attribute[2];
   cfg.gridDim = grid_size;

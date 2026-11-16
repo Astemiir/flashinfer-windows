@@ -201,11 +201,11 @@ class Fp8BlockScaleGemmRunner : public tvm::ffi::ModuleObj {
     size_t max_size = 0;
 
     max_size =
-        std::max(max_size, runner_bf16_bf16_->getWorkspaceSizeBase(shape_m, shape_n, shape_k, 1));
+        fi_max(max_size, runner_bf16_bf16_->getWorkspaceSizeBase(shape_m, shape_n, shape_k, 1));
     max_size =
-        std::max(max_size, runner_bf16_fp8_->getWorkspaceSizeBase(shape_m, shape_n, shape_k, 1));
+        fi_max(max_size, runner_bf16_fp8_->getWorkspaceSizeBase(shape_m, shape_n, shape_k, 1));
     max_size =
-        std::max(max_size, runner_fp8_fp8_->getWorkspaceSizeBase(shape_m, shape_n, shape_k, 1));
+        fi_max(max_size, runner_fp8_fp8_->getWorkspaceSizeBase(shape_m, shape_n, shape_k, 1));
 
     return max_size;
   }

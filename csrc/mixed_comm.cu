@@ -104,7 +104,7 @@ int get_dummy_smem_size(int device_id) {
     cudaGetDeviceProperties(&device_prop, device_id);
     int max_smem_size = device_prop.sharedMemPerMultiprocessor;
     int resv_smem_size = device_prop.reservedSharedMemPerBlock;
-    int dummy_smem_size = std::min(max_smem_size / 2, max_smem_size - resv_smem_size);
+    int dummy_smem_size = fi_min(max_smem_size / 2, max_smem_size - resv_smem_size);
     it = dummy_smem_size_map.emplace(device_id, dummy_smem_size).first;
   }
   return it->second;

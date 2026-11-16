@@ -1700,12 +1700,12 @@ cudaError_t RadixTopKMaskLogitsMultiCTA(DType* logits, DType* masked_logits, IdT
   uint32_t max_chunk_elements = available_for_ordered / sizeof(OrderedType);
   max_chunk_elements = round_down(max_chunk_elements, vec_size);
   const uint32_t min_chunk_size = vec_size * BLOCK_THREADS;
-  max_chunk_elements = std::max(max_chunk_elements, min_chunk_size);
+  max_chunk_elements = fi_max(max_chunk_elements, min_chunk_size);
 
   uint32_t ctas_per_group = ceil_div(vocab_size, max_chunk_elements);
   uint32_t chunk_size = ceil_div(vocab_size, ctas_per_group);
   chunk_size = round_up(chunk_size, vec_size);
-  chunk_size = std::min(chunk_size, max_chunk_elements);
+  chunk_size = fi_min(chunk_size, max_chunk_elements);
 
   const uint32_t smem_size = fixed_smem_aligned + chunk_size * sizeof(OrderedType);
   const bool single_cta = (ctas_per_group == 1);
@@ -1719,7 +1719,7 @@ cudaError_t RadixTopKMaskLogitsMultiCTA(DType* logits, DType* masked_logits, IdT
   }
 
   // Calculate number of groups (how many rows to process concurrently)
-  uint32_t num_groups = std::min(static_cast<uint32_t>(num_sms) / ctas_per_group, batch_size);
+  uint32_t num_groups = fi_min(static_cast<uint32_t>(num_sms) / ctas_per_group, batch_size);
   if (num_groups == 0) num_groups = 1;
   uint32_t total_ctas = num_groups * ctas_per_group;
 
@@ -2027,18 +2027,18 @@ cudaError_t RadixTopKRenormProbMultiCTA(DType* probs, DType* renormed_prob, IdTy
   uint32_t max_chunk_elements = available_for_ordered / sizeof(OrderedType);
   max_chunk_elements = round_down(max_chunk_elements, vec_size);
   const uint32_t min_chunk_size = vec_size * BLOCK_THREADS;
-  max_chunk_elements = std::max(max_chunk_elements, min_chunk_size);
+  max_chunk_elements = fi_max(max_chunk_elements, min_chunk_size);
 
   uint32_t ctas_per_group = ceil_div(vocab_size, max_chunk_elements);
   uint32_t chunk_size = ceil_div(vocab_size, ctas_per_group);
   chunk_size = round_up(chunk_size, vec_size);
-  chunk_size = std::min(chunk_size, max_chunk_elements);
+  chunk_size = fi_min(chunk_size, max_chunk_elements);
 
   const uint32_t smem_size = fixed_smem_aligned + chunk_size * sizeof(OrderedType);
   const bool single_cta = (ctas_per_group == 1);
 
   // Calculate number of groups (how many rows to process concurrently)
-  uint32_t num_groups = std::min(static_cast<uint32_t>(num_sms) / ctas_per_group, batch_size);
+  uint32_t num_groups = fi_min(static_cast<uint32_t>(num_sms) / ctas_per_group, batch_size);
   if (num_groups == 0) num_groups = 1;
   uint32_t total_ctas = num_groups * ctas_per_group;
 
@@ -2127,7 +2127,7 @@ cudaError_t RadixTopKPageTableTransformMultiCTA(
   uint32_t max_chunk_elements = available_for_ordered / sizeof(OrderedType);
   max_chunk_elements = round_down(max_chunk_elements, vec_size);
   const uint32_t min_chunk_size = vec_size * BLOCK_THREADS;
-  max_chunk_elements = std::max(max_chunk_elements, min_chunk_size);
+  max_chunk_elements = fi_max(max_chunk_elements, min_chunk_size);
 
   uint32_t ctas_per_group = ceil_div(max_len, max_chunk_elements);
   if (deterministic && ctas_per_group > RADIX_TOPK_MAX_DETERMINISTIC_CTAS_PER_GROUP) {
@@ -2135,12 +2135,12 @@ cudaError_t RadixTopKPageTableTransformMultiCTA(
   }
   uint32_t chunk_size = ceil_div(max_len, ctas_per_group);
   chunk_size = round_up(chunk_size, vec_size);
-  chunk_size = std::min(chunk_size, max_chunk_elements);
+  chunk_size = fi_min(chunk_size, max_chunk_elements);
 
   const bool single_cta = (ctas_per_group == 1);
   const uint32_t smem_size = fixed_smem_aligned + chunk_size * sizeof(OrderedType);
 
-  uint32_t num_groups = std::min(static_cast<uint32_t>(num_sms) / ctas_per_group, num_rows);
+  uint32_t num_groups = fi_min(static_cast<uint32_t>(num_sms) / ctas_per_group, num_rows);
   if (num_groups == 0) num_groups = 1;
   uint32_t total_ctas = num_groups * ctas_per_group;
   RadixDeterministicCollectScratch* det_scratch_buffer =
@@ -2256,7 +2256,7 @@ cudaError_t RadixTopKRaggedTransformMultiCTA(DType* input, IdType* output_indice
   uint32_t max_chunk_elements = available_for_ordered / sizeof(OrderedType);
   max_chunk_elements = round_down(max_chunk_elements, vec_size);
   const uint32_t min_chunk_size = vec_size * BLOCK_THREADS;
-  max_chunk_elements = std::max(max_chunk_elements, min_chunk_size);
+  max_chunk_elements = fi_max(max_chunk_elements, min_chunk_size);
 
   uint32_t ctas_per_group = ceil_div(max_len, max_chunk_elements);
   if (deterministic && ctas_per_group > RADIX_TOPK_MAX_DETERMINISTIC_CTAS_PER_GROUP) {
@@ -2264,12 +2264,12 @@ cudaError_t RadixTopKRaggedTransformMultiCTA(DType* input, IdType* output_indice
   }
   uint32_t chunk_size = ceil_div(max_len, ctas_per_group);
   chunk_size = round_up(chunk_size, vec_size);
-  chunk_size = std::min(chunk_size, max_chunk_elements);
+  chunk_size = fi_min(chunk_size, max_chunk_elements);
 
   const bool single_cta = (ctas_per_group == 1);
   const uint32_t smem_size = fixed_smem_aligned + chunk_size * sizeof(OrderedType);
 
-  uint32_t num_groups = std::min(static_cast<uint32_t>(num_sms) / ctas_per_group, num_rows);
+  uint32_t num_groups = fi_min(static_cast<uint32_t>(num_sms) / ctas_per_group, num_rows);
   if (num_groups == 0) num_groups = 1;
   uint32_t total_ctas = num_groups * ctas_per_group;
   RadixDeterministicCollectScratch* det_scratch_buffer =
@@ -2373,7 +2373,7 @@ cudaError_t RadixTopKMultiCTA(DType* input, IdType* output_indices, DType* outpu
   uint32_t max_chunk_elements = available_for_ordered / sizeof(OrderedType);
   max_chunk_elements = round_down(max_chunk_elements, vec_size);
   const uint32_t min_chunk_size = vec_size * BLOCK_THREADS;
-  max_chunk_elements = std::max(max_chunk_elements, min_chunk_size);
+  max_chunk_elements = fi_max(max_chunk_elements, min_chunk_size);
 
   uint32_t ctas_per_group = ceil_div(vocab_size, max_chunk_elements);
   if (deterministic && ctas_per_group > RADIX_TOPK_MAX_DETERMINISTIC_CTAS_PER_GROUP) {
@@ -2381,7 +2381,7 @@ cudaError_t RadixTopKMultiCTA(DType* input, IdType* output_indices, DType* outpu
   }
   uint32_t chunk_size = ceil_div(vocab_size, ctas_per_group);
   chunk_size = round_up(chunk_size, vec_size);
-  chunk_size = std::min(chunk_size, max_chunk_elements);
+  chunk_size = fi_min(chunk_size, max_chunk_elements);
 
   // Determine if we use single-CTA path
   const bool single_cta = (ctas_per_group == 1);
@@ -2390,7 +2390,7 @@ cudaError_t RadixTopKMultiCTA(DType* input, IdType* output_indices, DType* outpu
   const uint32_t smem_size = fixed_smem_aligned + chunk_size * sizeof(OrderedType);
 
   // Calculate number of groups (how many rows to process concurrently)
-  uint32_t num_groups = std::min(static_cast<uint32_t>(num_sms) / ctas_per_group, batch_size);
+  uint32_t num_groups = fi_min(static_cast<uint32_t>(num_sms) / ctas_per_group, batch_size);
   if (num_groups == 0) num_groups = 1;
   uint32_t total_ctas = num_groups * ctas_per_group;
   RadixDeterministicCollectScratch* det_scratch_buffer =
@@ -3613,7 +3613,7 @@ inline bool ShouldUseFilteredTopK(uint32_t num_rows, uint32_t top_k_val, uint32_
       if (max_len <= 16384) {
         return true;
       } else {
-        const uint32_t batch_threshold = std::min(64u, std::max(16u, max_len / 4096));
+        const uint32_t batch_threshold = fi_min(64u, fi_max(16u, max_len / 4096));
         return num_rows >= batch_threshold;
       }
     }

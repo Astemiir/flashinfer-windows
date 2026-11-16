@@ -110,7 +110,7 @@ class CutlassMxfp8GemmRunnerSm120 : public virtual CutlassMxfp8GemmRunnerInterfa
       for (auto const& gemmConfig : getConfigs()) {
         size_t curr = dispatchToArch(nullptr, nullptr, nullptr, nullptr, nullptr, m, n, k,
                                      batch_count, gemmConfig, nullptr, 0, nullptr, nullptr);
-        workspace_size = std::max(workspace_size, curr);
+        workspace_size = fi_max(workspace_size, curr);
       }
       workspace_hashmap[std::make_tuple(m, n, k, batch_count)] = workspace_size;
     }

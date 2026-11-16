@@ -100,7 +100,7 @@ size_t dispatchGenericFp4GemmKernelLauncher(void* D, void const* A, void const* 
   };
 
   if (!A && !B && !D) {
-    return std::max(run_tma(), run_store256());
+    return fi_max(run_tma(), run_store256());
   }
   return isStore256OutputAligned(static_cast<T*>(D), n) ? run_store256() : run_tma();
 }
@@ -416,7 +416,7 @@ size_t CutlassFp4GemmRunner<T, fp4GemmType>::getWorkspaceSizeImpl(int const m, i
       size_t curr_workspace_size = CutlassFp4GemmRunner<T, fp4GemmType>::dispatchToArch(
           nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, m, n, k, batch_count, gemmConfig,
           nullptr, 0, 0);
-      workspace_size = std::max(workspace_size, curr_workspace_size);
+      workspace_size = fi_max(workspace_size, curr_workspace_size);
     } catch (std::runtime_error& e) {
       // Swallow errors when SMEM exceeds maximum allowed
       continue;

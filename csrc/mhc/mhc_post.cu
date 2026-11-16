@@ -541,7 +541,7 @@ void launch_bf16_hc4(TensorView x, TensorView residual, TensorView post_layer_mi
   } else {
     const int64_t total = total_tokens * H;
     int blocks = static_cast<int>(std::min<int64_t>((total + kThreads - 1) / kThreads, 65535));
-    blocks = std::max(blocks, 1);
+    blocks = fi_max(blocks, 1);
     mhc_post_bf16_hc4_scalar_kernel<<<blocks, kThreads, 0, stream>>>(
         x_ptr, residual_ptr, post_ptr, comb_ptr, out_ptr, total_tokens, H);
   }

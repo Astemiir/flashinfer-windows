@@ -121,7 +121,7 @@ __global__ static void __launch_bounds__(128)
 
   std::array<uint32_t, DIMS_QKV> tensor_traversal_stride_qkv = {1, 1, 1, 1};
   std::array<uint32_t, DIMS_QKV> tensor_box_size_qo = {64, 1, 1, 1};
-  std::array<uint32_t, DIMS_QKV> tensor_box_size_kv = {64, std::min(tile_n_1, page_size), 1, 1};
+  std::array<uint32_t, DIMS_QKV> tensor_box_size_kv = {64, fi_min(tile_n_1, page_size), 1, 1};
   std::array<uint32_t, DIMS_QKV> tensor_box_size_partial_o = {32, 1, 1, 1};
 
   std::array<uint32_t, DIMS_QKV> tensor_size_qo = {d, 1 /* s_qo */, h_qo, b};
@@ -262,7 +262,7 @@ __global__ static void __launch_bounds__(128)
                                                           v_strides_1 * (BYTES_PER_ELEMENT),
                                                           v_strides_0 * (BYTES_PER_ELEMENT)};
     std::array<uint32_t, DIMS_QKV> tensor_box_size_k = {
-        64, kv_cache_enabled ? std::min(TILE_N_1, page_size) : TILE_N_1, 1, 1};
+        64, kv_cache_enabled ? fi_min(TILE_N_1, page_size) : TILE_N_1, 1, 1};
 
     tma::cudaSetTmaTileDescriptor(
         reinterpret_cast<tma::cudaTmaDesc*>(tma_desc_k), k_ptr, DIMS_QKV, tensor_size_k.data(),
@@ -636,9 +636,9 @@ void prefill(int64_t b, int64_t s_qo, int64_t max_s_kv, TensorView q, TensorView
 
   std::array<uint32_t, DIMS_QKV> tensor_box_size_q = {64, TILE_M_1, 1, 1};
   std::array<uint32_t, DIMS_QKV> tensor_box_size_k = {
-      64, kv_cache_enabled ? std::min(TILE_N_1, page_size) : TILE_N_1, 1, 1};
+      64, kv_cache_enabled ? fi_min(TILE_N_1, page_size) : TILE_N_1, 1, 1};
   std::array<uint32_t, DIMS_QKV> tensor_box_size_v = {
-      64, kv_cache_enabled ? std::min(TILE_N_1, page_size) : TILE_N_1, 1, 1};
+      64, kv_cache_enabled ? fi_min(TILE_N_1, page_size) : TILE_N_1, 1, 1};
 
   uint64_t batch_offset_qo = 0;
   int8_t* workspace_start = static_cast<int8_t*>(workspace_buffer.data_ptr());
@@ -867,7 +867,7 @@ void setup_tma_desc_decode(int64_t b, int64_t s_kv, int64_t h_qo, int64_t h_kv, 
 
   std::array<uint32_t, DIMS_QKV> tensor_traversal_stride_qkv = {1, 1, 1, 1};
   std::array<uint32_t, DIMS_QKV> tensor_box_size_qo = {64, 1, 1, 1};
-  std::array<uint32_t, DIMS_QKV> tensor_box_size_kv = {64, std::min(TILE_N_1, page_size), 1, 1};
+  std::array<uint32_t, DIMS_QKV> tensor_box_size_kv = {64, fi_min(TILE_N_1, page_size), 1, 1};
   std::array<uint32_t, DIMS_QKV> tensor_box_size_partial_o = {32, 1, 1, 1};
 
   std::array<uint32_t, DIMS_QKV> tensor_size_qo = {d, 1 /* s_qo */, h_qo, b};

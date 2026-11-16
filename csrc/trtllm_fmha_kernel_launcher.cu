@@ -119,7 +119,7 @@ inline size_t getTrtllmGenMultiCtasKvCounterBytes(int64_t batch_size, int64_t nu
       static_cast<size_t>(batch_size) * static_cast<size_t>(num_qo_heads);
   size_t const sm_counter_slots = static_cast<size_t>(sm_count);
   size_t const num_semaphores =
-      round_up(std::max(request_counter_slots, sm_counter_slots), static_cast<size_t>(8));
+      round_up(fi_max(request_counter_slots, sm_counter_slots), static_cast<size_t>(8));
   return num_semaphores * sizeof(uint32_t);
 }
 

@@ -58,7 +58,7 @@ void moeCommPrepareIndicesOp(TensorView gatheredTargetRankIds,
 
   auto stream = get_current_stream();
 
-  int maxSendRanksPerToken = std::max(static_cast<int>(epSize), static_cast<int>(topK));
+  int maxSendRanksPerToken = fi_max(static_cast<int>(epSize), static_cast<int>(topK));
 
   CHECK_INPUT_TYPE(localGatherIndices, dl_int32);
   TVM_FFI_ICHECK_EQ(localGatherIndices.ndim(), 1);
@@ -240,7 +240,7 @@ void moePrepareOp(TensorView expertsIds, Optional<TensorView> scales,
   TVM_FFI_ICHECK_EQ(expertCount % 4, 0) << "expertCount must be divisible by 4";
   TVM_FFI_ICHECK_EQ(slotCount % 4, 0) << "slotCount must be divisible by 4";
 
-  int64_t maxSendRanksPerToken = std::max(epSize, topK);
+  int64_t maxSendRanksPerToken = fi_max(epSize, topK);
   int64_t tokenCount = expertsIds.size(0);
 
   CHECK_DEVICE(preparedLocalExpertIds, expertsIds);

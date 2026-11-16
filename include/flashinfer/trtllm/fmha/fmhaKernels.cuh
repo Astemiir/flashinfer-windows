@@ -570,7 +570,7 @@ class TllmGenFmhaKernel {
       } else {
         // Compute numTokensPerCtaQ where each CTA must process complete numGroupedHeadsQ.
         // Note that each CTA must process complete numHeadsQPerKv.
-        int numTokensPerCtaQ = std::max(1, kernelMeta.mStepQ / params.mNumHeadsQPerKv);
+        int numTokensPerCtaQ = fi_max(1, kernelMeta.mStepQ / params.mNumHeadsQPerKv);
         // Group both headsQ and tokensQ into one CTA.
         numCtasPerSeqQ = flashinfer::ceil_div(params.mMaxSeqLenQ, numTokensPerCtaQ);
       }
@@ -578,7 +578,7 @@ class TllmGenFmhaKernel {
 
     // Compute the grid dimension Y.
     int numHeadsPerCta =
-        kernelMeta.mGroupsHeadsQ ? std::min(params.mNumHeadsQPerKv, kernelMeta.mStepQ) : 1;
+        kernelMeta.mGroupsHeadsQ ? fi_min(params.mNumHeadsQPerKv, kernelMeta.mStepQ) : 1;
     int numCtasForAllHeadsQ = params.mNumHeadsQ / numHeadsPerCta;
     FLASHINFER_CHECK(numHeadsPerCta * numCtasForAllHeadsQ == params.mNumHeadsQ,
                      "The numHeadsQ/numHeadsKv is not supported.");
@@ -611,7 +611,7 @@ class TllmGenFmhaKernel {
       int maxAttentionWindow{params.mMaxSeqLenKv};
       // The sparseMla only selects topK tokensKv.
       if (isSparseMla(params.mSparseMlaType)) {
-        maxAttentionWindow = std::min(params.mMaxSeqLenKv, params.mSparseMlaTopK);
+        maxAttentionWindow = fi_min(params.mMaxSeqLenKv, params.mSparseMlaTopK);
       }
       // Some of the tilesKv will be skipped if the sliding window attention or chunked attention is
       // used.
@@ -620,9 +620,9 @@ class TllmGenFmhaKernel {
           // Consider that the first tileKv might contain tokensKv that is out of the attention
           // window.
           maxAttentionWindow =
-              std::min(params.mMaxSeqLenKv, params.mAttentionWindowSize + kernelMeta.mStepKv - 1);
+              fi_min(params.mMaxSeqLenKv, params.mAttentionWindowSize + kernelMeta.mStepKv - 1);
         } else {
-          maxAttentionWindow = std::min(params.mMaxSeqLenKv, params.mChunkedAttentionSize);
+          maxAttentionWindow = fi_min(params.mMaxSeqLenKv, params.mChunkedAttentionSize);
         }
       }
 
@@ -644,10 +644,10 @@ class TllmGenFmhaKernel {
         if (maxNumCtasPerSeqKv <= numCtasForAllHeadsQ * maxKvSplitsPerCgaCluster) {
           int const launchedClusters =
               flashinfer::ceil_div(numCtasX, clusterDimX) * numCtasY * numCtasZ;
-          int const residentSplitBudget = std::max(
+          int const residentSplitBudget = fi_max(
               4, flashinfer::ceil_div(params.mMultiProcessorCount * 13 / 20, launchedClusters));
           int const targetMaxNumCtasPerSeqKv =
-              std::min(maxNumCtasPerSeqKv, std::min(maxKvSplitsPerCgaCluster, residentSplitBudget));
+              fi_min(maxNumCtasPerSeqKv, fi_min(maxKvSplitsPerCgaCluster, residentSplitBudget));
           if (targetMaxNumCtasPerSeqKv > 1 && targetMaxNumCtasPerSeqKv < maxNumCtasPerSeqKv) {
             int const targetTileSizePerCtaKv =
                 isSlidingOrChunkedCausalMask(selectKernelParams.mMaskType)
@@ -661,9 +661,9 @@ class TllmGenFmhaKernel {
         }
       }
       // Compute numCtasPerSeqKv.
-      numCtasPerSeqKv = std::min(
+      numCtasPerSeqKv = fi_min(
           tunedMaxNumCtasPerSeqKv,
-          std::max(1, int32_t(params.mMultiProcessorCount / (numCtasX * numCtasY * numCtasZ))));
+          fi_max(1, int32_t(params.mMultiProcessorCount / (numCtasX * numCtasY * numCtasZ))));
       // Update the numCtasX.
       numCtasX *= numCtasPerSeqKv;
       // The current total number of CTAs.
@@ -775,7 +775,7 @@ class TllmGenFmhaKernel {
                                              flashinfer::ceil_div(params.mNumHeadsQPerKv, 16));
     // Compute numCtasPerSeqKv.
     int const numCtasPerSeqKv =
-        std::min(maxNumCtasPerSeqKv, std::max(1, int32_t(params.mMultiProcessorCount / numCtas)));
+        fi_min(maxNumCtasPerSeqKv, fi_max(1, int32_t(params.mMultiProcessorCount / numCtas)));
     // Compute the seqLenPerCtaKv.
     int const seqLenPerCtaKv = flashinfer::ceil_div(params.mMaxSeqLenKv, numCtasPerSeqKv);
     // Whether we should use the SwapsMmaAbForGeneration kernel for MLA generation.
@@ -793,7 +793,7 @@ class TllmGenFmhaKernel {
     }
     FLASHINFER_CHECK(numHeadsQPerKv <= 64,
                      "Non-power-of-two MLA numHeadsQPerKv must be <= 64, got %d.", numHeadsQPerKv);
-    return std::max(8, flashinfer::UpPowerOfTwo(numHeadsQPerKv));
+    return fi_max(8, flashinfer::UpPowerOfTwo(numHeadsQPerKv));
   }
 
   // Select the sparse MLA generation kernel.
@@ -832,7 +832,7 @@ class TllmGenFmhaKernel {
       // Only halve when half tileSizeQ >= 8 (no valid SwapsMmaAb kernel below tileSizeQ=8).
       int const fullTileSizeQ = params.mNumHeadsQPerKv;
       int const halfTileSizeQ = fullTileSizeQ / 2;
-      int const effectiveSeqLenKv = std::min(params.mMaxSeqLenKv, params.mSparseMlaTopK);
+      int const effectiveSeqLenKv = fi_min(params.mMaxSeqLenKv, params.mSparseMlaTopK);
       int const maxNumCtasPerSeqKv =
           flashinfer::ceil_div(effectiveSeqLenKv, selectKernelParams.mTileSizeKv);
       bool const useHalfTileSizeQ =
@@ -920,7 +920,7 @@ class TllmGenFmhaKernel {
       selectKernelParams.mHeadDimPerCtaV = 512;
     }
     selectKernelParams.mHeadDimPerCtaV =
-        std::min(selectKernelParams.mHeadDimPerCtaV, params.mHeadDimV);
+        fi_min(selectKernelParams.mHeadDimPerCtaV, params.mHeadDimV);
   }
 
   // Select the MLA generation kernel.

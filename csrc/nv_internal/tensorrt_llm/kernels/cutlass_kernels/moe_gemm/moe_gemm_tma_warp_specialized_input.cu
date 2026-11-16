@@ -26,10 +26,10 @@ namespace tensorrt_llm::kernels::cutlass_kernels {
 std::array<size_t, 20> TmaWarpSpecializedGroupedGemmInput::workspaceBuffers(
     int num_experts, FpXBlockScalingType scaling_type) {
   size_t problem_shape_size = sizeof(ProblemShape::UnderlyingProblemShape) * num_experts;
-  size_t stride_act_size = std::max(sizeof(StrideA), sizeof(StrideB)) * num_experts;
-  size_t stride_weight_size = std::max(sizeof(StrideA), sizeof(StrideB)) * num_experts;
-  size_t stride_c_size = std::max(sizeof(StrideC), sizeof(StrideC_T)) * num_experts;
-  size_t stride_d_size = std::max(sizeof(StrideD), sizeof(StrideD_T)) * num_experts;
+  size_t stride_act_size = fi_max(sizeof(StrideA), sizeof(StrideB)) * num_experts;
+  size_t stride_weight_size = fi_max(sizeof(StrideA), sizeof(StrideB)) * num_experts;
+  size_t stride_c_size = fi_max(sizeof(StrideC), sizeof(StrideC_T)) * num_experts;
+  size_t stride_d_size = fi_max(sizeof(StrideD), sizeof(StrideD_T)) * num_experts;
 
   size_t ptr_buf_size = sizeof(void*) * num_experts;
   size_t scale_buf_size = sizeof(float*) * num_experts;

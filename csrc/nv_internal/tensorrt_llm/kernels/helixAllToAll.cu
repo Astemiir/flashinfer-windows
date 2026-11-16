@@ -319,7 +319,7 @@ __global__ void helixAllToAllKernel(HelixAllToAllParams params) {
   int singleUnpackedSize = computeTotalUnpackedSize(params.sendFields);
   int singleProtoTransferSize = computeProtoTransferSize(params.sendFields);
   int singleProtoTransfer128ByteCount = singleProtoTransferSize / BYTES_PER_128B_BLOCK;
-  int singleShmSize = std::max(singleUnpackedSize, singleProtoTransferSize);
+  int singleShmSize = fi_max(singleUnpackedSize, singleProtoTransferSize);
   uint8_t* shmem = allWarpShmem + group * singleShmSize;
 
   // Get FIFO pointers
@@ -487,14 +487,14 @@ std::tuple<int, int, int> computeChannelAndGroupCount(int cpSize, HelixFieldInfo
       cache;
   int deviceId = 0;
   TLLM_CUDA_CHECK(cudaGetDevice(&deviceId));
-  int singleShmSize = std::max(computeTotalUnpackedSize(fields), computeProtoTransferSize(fields));
+  int singleShmSize = fi_max(computeTotalUnpackedSize(fields), computeProtoTransferSize(fields));
   auto key = std::make_tuple(deviceId, cpSize, singleShmSize);
   auto it = cache.find(key);
   if (it != cache.end()) {
     return it->second;
   }
 
-  int maxGroupCountPerCta = std::min(cpSize, MAX_GROUP_COUNT_PER_BLOCK);
+  int maxGroupCountPerCta = fi_min(cpSize, MAX_GROUP_COUNT_PER_BLOCK);
   int groupCountPerCta = maxGroupCountPerCta;  // Start with max
   int totalDynamicShmemSize = singleShmSize * groupCountPerCta;
   int maxDynamicShmSize = 0;
@@ -526,7 +526,7 @@ std::tuple<int, int, int> computeChannelAndGroupCount(int cpSize, HelixFieldInfo
   // all SMs and probably uses >50% shmem per SM.
   // overlap with the subsequent BMM / out proj GEMMs might be possible,
   // so we need experiments to see whether it makes sense.
-  int channelCount = std::max(smCount / blockCountPerChannel, 1);
+  int channelCount = fi_max(smCount / blockCountPerChannel, 1);
   auto value = std::make_tuple(channelCount, groupCountPerCta, totalDynamicShmemSize);
   cache[key] = value;
   return value;
@@ -589,7 +589,7 @@ int computeHelixMaxChannelCount(int cpSize, int smCount) {
   blockCountPerChannel *= 2;  // for send and recv
 
   int preferredChannel = smCount / blockCountPerChannel;
-  return std::max(preferredChannel, 1);  // at least one channel
+  return fi_max(preferredChannel, 1);  // at least one channel
 }
 
 size_t computeHelixWorkspaceSizePerRank(int cpSize) {

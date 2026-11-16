@@ -549,7 +549,7 @@ static inline void store_paged_kv_cache(
       memset(k_tmp, 0, sz_k);
       memset(v_tmp, 0, sz_v);
       size_t seq_bound =
-          std::min(tokens_per_block, actual_kv_seqlen - block_idx * tokens_per_block);
+          fi_min(tokens_per_block, actual_kv_seqlen - block_idx * tokens_per_block);
       for (size_t hi = 0; hi < h_kv; hi++) {
         for (size_t si = 0; si < seq_bound; si++) {
           auto copy_vector = [&](void* block, size_t vector_d, int qkv_offset) {
@@ -604,7 +604,7 @@ static inline void extract_and_transpose_output(void* dst_, void* src_,
     int s_ = s_padded ? s : seqlens[bi];
     // only consider the chunked q tile.
     int q_seqlen_ = s_padded ? q_seqlen : q_seqlens[bi];
-    for (int si = std::max(s_ - q_seqlen_, 0); si < s_; si++) {
+    for (int si = fi_max(s_ - q_seqlen_, 0); si < s_; si++) {
       for (int hi = 0; hi < h; hi++) {
         for (int di = 0; di < d; di++) {
           int in_idx = si * b * h * d + bi * h * d + hi * d + di;

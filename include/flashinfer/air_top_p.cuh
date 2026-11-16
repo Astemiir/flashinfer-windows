@@ -469,7 +469,7 @@ uint32_t CalcAirTopPBlockNum(int batchSize, int len, int smCnt) {
   IdxT const maxNumBlocks = ceilDiv<IdxT>(len, VECTORIZED_READ_SIZE / (int)sizeof(T) * BLOCK_SIZE);
   for (int numWaves = 1;; ++numWaves) {
     IdxT numBlocks =
-        std::min(maxNumBlocks, static_cast<IdxT>(std::max(numWaves * activeBlocks / batchSize, 1)));
+        fi_min(maxNumBlocks, static_cast<IdxT>(fi_max(numWaves * activeBlocks / batchSize, 1)));
     IdxT itemsPerThread = ceilDiv<IdxT>(len, numBlocks * BLOCK_SIZE);
     itemsPerThread = alignTo<IdxT>(itemsPerThread, VECTORIZED_READ_SIZE / (int)sizeof(T));
     numBlocks = ceilDiv<IdxT>(len, itemsPerThread * BLOCK_SIZE);

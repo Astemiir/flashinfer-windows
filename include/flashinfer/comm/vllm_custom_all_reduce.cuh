@@ -468,7 +468,7 @@ class CustomAllreduce {
 
     size /= d;
     auto bytes = size * sizeof(typename packed_t<T>::P);
-    int blocks = std::min(block_limit, (size + threads - 1) / threads);
+    int blocks = fi_min(block_limit, (size + threads - 1) / threads);
 #define KL(ngpus, name) \
   name<T, ngpus><<<blocks, threads, 0, stream>>>(ptrs, sg_, self_sg_, output, rank_, size);
     // TODO(hanzhi713): Threshold is different for A100 and H100.

@@ -118,7 +118,7 @@ void moePermute(InputType const* input, InputType* permuted_output, SFType const
   auto kernel = &moePermuteKernel<InputType, SFType, kSFVecSize, kThreadsPerBlock>;
   static int32_t const smCount = tensorrt_llm::common::getMultiProcessorCount();
   int32_t const maxBlocksPerSM = getMaxActiveBlocksPerSM(kernel, kThreadsPerBlock, 0);
-  int32_t const blocks = std::min(smCount * maxBlocksPerSM, max_num_permuted_tokens);
+  int32_t const blocks = fi_min(smCount * maxBlocksPerSM, max_num_permuted_tokens);
   int32_t const threads = kThreadsPerBlock;
 
   cudaLaunchConfig_t config;
@@ -320,7 +320,7 @@ void moeOutputMemset(InputType* input, int32_t const* tile_idx_to_mn_limit,
   auto kernel = &moeOutputMemsetKernel<InputType, kThreadsPerBlock>;
   static int32_t const smCount = tensorrt_llm::common::getMultiProcessorCount();
   int32_t const maxBlocksPerSM = getMaxActiveBlocksPerSM(kernel, kThreadsPerBlock, 0);
-  int32_t const blocks = std::min(smCount * maxBlocksPerSM, max_num_permuted_tokens);
+  int32_t const blocks = fi_min(smCount * maxBlocksPerSM, max_num_permuted_tokens);
   int32_t const threads = kThreadsPerBlock;
 
   cudaLaunchConfig_t config;
@@ -449,7 +449,7 @@ void moeActivation(InputType const* input, InputType* output, int32_t const* til
 
   static int32_t const smCount = tensorrt_llm::common::getMultiProcessorCount();
   int32_t const maxBlocksPerSM = getMaxActiveBlocksPerSM(kernel, kThreadsPerBlock, 0);
-  int32_t const blocks = std::min(smCount * maxBlocksPerSM, max_num_permuted_tokens);
+  int32_t const blocks = fi_min(smCount * maxBlocksPerSM, max_num_permuted_tokens);
   int32_t const threads = kThreadsPerBlock;
 
   cudaLaunchConfig_t config;

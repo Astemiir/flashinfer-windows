@@ -66,7 +66,7 @@ inline int runtimeBlocksPerSM(int blockThreads) {
   int maxThreadsPerSM = 1024;
   cudaDeviceGetAttribute(&maxThreadsPerSM, cudaDevAttrMaxThreadsPerMultiProcessor, device);
   int blocks = (blockThreads > 0) ? (maxThreadsPerSM / blockThreads) : 1;
-  return std::max(1, blocks);
+  return fi_max(1, blocks);
 }
 __global__ static void quantizedKernel(char4* dst, float4 const* src, int64_t const sizeDiv4,
                                        float const* scalePtr) {

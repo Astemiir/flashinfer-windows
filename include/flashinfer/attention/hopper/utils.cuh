@@ -37,13 +37,13 @@ using namespace cute;
 template <int CTA_Q, int CTA_KV>
 CUTLASS_DEVICE int get_swa_begin_kv_tile_idx(int window_left, int q_tile_idx, const int qo_len,
                                              const int kv_len) {
-  return std::max((q_tile_idx * CTA_Q + kv_len - qo_len - window_left) / CTA_KV - 1, 0);
+  return fi_max((q_tile_idx * CTA_Q + kv_len - qo_len - window_left) / CTA_KV - 1, 0);
 }
 
 template <int CTA_Q, int CTA_KV>
 CUTLASS_DEVICE int get_swa_end_kv_tile_idx(int window_left, int q_tile_idx, const int qo_len,
                                            const int kv_len) {
-  return std::max(((q_tile_idx + 1) * CTA_Q + kv_len - qo_len - window_left) / CTA_KV, -1);
+  return fi_max(((q_tile_idx + 1) * CTA_Q + kv_len - qo_len - window_left) / CTA_KV, -1);
 }
 
 template <typename TensorT>

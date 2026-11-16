@@ -327,7 +327,7 @@ __global__ void __launch_bounds__(KernelParams::MaxNumExperts <= 1024 ? KernelPa
 // the caller (run) must not proceed to the downstream pipeline in that case.
 bool launchBlockKernel(Data const& data, void* stream) {
   uint32_t const numThreadsBlock =
-      std::min(1024u, static_cast<uint32_t>(queryDispatchedMaxExperts(data)));
+      fi_min(1024u, static_cast<uint32_t>(queryDispatchedMaxExperts(data)));
   LAUNCH_ROUTING_CUSTOM(data, false, routingIndicesBlockKernel, 1, numThreadsBlock,
                         /*smemSize=*/0,  // No dynamic smem
                         stream);
@@ -664,7 +664,7 @@ bool launchDynBlockKernel(Data const& data, uint32_t numThreadsHist, void* strea
   int const smemSize = numSlots + numSlots * 2 + 128 +
                        2 * (maxExperts / WarpSize) * static_cast<int>(sizeof(int32_t));
   int const threads =
-      std::min(std::max(data.mNumTokens * static_cast<int>(WarpSize), maxExperts), 1024);
+      fi_min(fi_max(data.mNumTokens * static_cast<int>(WarpSize), maxExperts), 1024);
 
   LAUNCH_ROUTING_CUSTOM(data, false, routingIndicesDynBlockKernel, 1, threads, smemSize, stream);
   return queryPolicyHasCompiledTier(data);
@@ -1685,7 +1685,7 @@ void run(Data const& data, void* stream) {
   }
 
   uint32_t const numThreadsHist =
-      std::min(1024u, static_cast<uint32_t>(getMaxNumExperts(data.mNumExperts)));
+      fi_min(1024u, static_cast<uint32_t>(getMaxNumExperts(data.mNumExperts)));
 
   // We need a mutable copy since `data` is const.
   Data mutableData = data;
@@ -1818,10 +1818,10 @@ void run(Data const& data, void* stream) {
       uint32_t const histogramEltsPerBlock = 8 * numThreadsHist;
       uint32_t const offsetEltsPerBlock = NumEltsPerOffsetTilePerThread * numThreadsHist;
 
-      int const numBlocksHistogram = std::min(
+      int const numBlocksHistogram = fi_min(
           (expandedIdxSize + histogramEltsPerBlock - 1) / histogramEltsPerBlock, maxNumBlocks);
       int const numBlocksOffsets =
-          std::min((expandedIdxSize + offsetEltsPerBlock - 1) / offsetEltsPerBlock, maxNumBlocks);
+          fi_min((expandedIdxSize + offsetEltsPerBlock - 1) / offsetEltsPerBlock, maxNumBlocks);
 
       launchHistogramKernel(mutableData, numBlocksHistogram, numThreadsHist, stream);
       launchOffsetsKernel(mutableData, numBlocksOffsets, numThreadsHist, stream);

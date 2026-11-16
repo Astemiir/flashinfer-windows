@@ -139,7 +139,7 @@ struct DqMma<
   // created
   using MmaCore = typename cutlass::gemm::threadblock::DefaultMmaCore<
       ThreadblockShape, WarpShape, InstructionShape, ElementA, LayoutA, ElementB, LayoutB,
-      ElementAccumulator, layout::RowMajor, OperatorClass, std::max(kStages, 3), Operator, false,
+      ElementAccumulator, layout::RowMajor, OperatorClass, fi_max(kStages, 3), Operator, false,
       CacheOpA, CacheOpB>;
 
   // Define iterators over tiles from the A operand
@@ -248,7 +248,7 @@ struct DqMma<
   using MmaCore = typename cutlass::gemm::threadblock::DefaultMmaCore<
       ThreadblockShape, WarpShape, InstructionShape, ElementA, LayoutA, ElementB,
       layout::ColumnMajor, ElementAccumulator, layout::RowMajor, OperatorClass,
-      std::max(kStages, 3), Operator, false, CacheOpA, CacheOpB>;
+      fi_max(kStages, 3), Operator, false, CacheOpA, CacheOpB>;
 
   // Define iterators over tiles from the A operand
   using ThreadMapA = typename MmaCore::IteratorThreadMapA;

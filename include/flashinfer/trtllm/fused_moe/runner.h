@@ -68,7 +68,7 @@ inline int32_t maybeGetMinTokenCount(int32_t numPaddedTokens, int32_t hiddenSize
                                      int32_t dtypeSizeBits) {
   // Pad so total size exceeds 128KiB for performance reasons
   int32_t minNumTokensRequired = common::divUp(128 * 1024 * 8, hiddenSize * dtypeSizeBits);
-  return std::max(numPaddedTokens, minNumTokensRequired);
+  return fi_max(numPaddedTokens, minNumTokensRequired);
 }
 
 inline std::string serializeMoeRoutingMethodType(RoutingMethodType routingMethodType) {
@@ -108,7 +108,7 @@ inline int32_t getMaxNumCtasInBatchDim(int32_t numTokens, int32_t topK, int32_t 
   int32_t numRemainingTokens = numTokens * topK;
   int32_t maxNumCtasInBatchDim = 0;
   // First, distribute one token each expert until token depletion to maximize CTA tile count.
-  int32_t numExpertsFilled = std::min(numExperts, numRemainingTokens);
+  int32_t numExpertsFilled = fi_min(numExperts, numRemainingTokens);
   maxNumCtasInBatchDim += numExpertsFilled;
   numRemainingTokens -= numExpertsFilled;
   // Next, greedily pour all remaining tokens to one expert to maximize CTA tile count.

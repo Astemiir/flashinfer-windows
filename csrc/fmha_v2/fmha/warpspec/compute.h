@@ -157,9 +157,9 @@ struct Compute {
   // scales_k[SAGE_BLOCKS_PER_STEP_K];` if SAGE_BLOCKS_PER_STEP_X == 0, you will get `zero-sized
   // variable is not allowed in device code` error from nvcc, so the minimal value have to be 1. But
   // don't worry, unused local variables will be optimized out by compiler.
-  enum { SAGE_BLOCKS_PER_STEP_K = std::max(STEP_KV / SAGE_BLOCK_SIZE_K, 1) };
+  enum { SAGE_BLOCKS_PER_STEP_K = fi_max(STEP_KV / SAGE_BLOCK_SIZE_K, 1) };
 
-  enum { SAGE_BLOCKS_PER_STEP_V = std::max(STEP_KV / SAGE_BLOCK_SIZE_V, 1) };
+  enum { SAGE_BLOCKS_PER_STEP_V = fi_max(STEP_KV / SAGE_BLOCK_SIZE_V, 1) };
 
 #define K_TILE_WAIT()         \
   int ready_k = cbr_k.peek(); \

@@ -470,7 +470,7 @@ void runFmhaReduction(TllmGenFmhaKernelMetaInfo const& kernelMeta, KernelParams 
   // The number of heads computed by a single CTA.
   int numHeadsPerCta{1};
   if (kernelMeta.mGroupsHeadsQ) {
-    numHeadsPerCta = std::min(params.mNumHeadsQPerKv, kernelMeta.mTileSizeQ);
+    numHeadsPerCta = fi_min(params.mNumHeadsQPerKv, kernelMeta.mTileSizeQ);
   }
   // The number of Ctas for all heads.
   int32_t const numCtasForAllHeads{params.mNumHeadsQ / numHeadsPerCta};
@@ -492,7 +492,7 @@ void runFmhaReduction(TllmGenFmhaKernelMetaInfo const& kernelMeta, KernelParams 
   int32_t const maxNumCtasForReduction{(multiProcessorCount * 2) /
                                        static_cast<int32_t>(gridDim.x * gridDim.y * gridDim.z)};
   // The number of Ctas for the reduction work.
-  int32_t const numCtasForReduction{std::min(maxNumCtasForReduction, numSlices)};
+  int32_t const numCtasForReduction{fi_min(maxNumCtasForReduction, numSlices)};
   // Launch more CTAs to split the reduction work if needed.
   gridDim.x *= numCtasForReduction;
 

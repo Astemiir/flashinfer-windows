@@ -110,7 +110,7 @@ struct QKGemmComputer {
         }
       } else {
         int col_limit =
-            std::min(seqlen_k - n_block * kBlockN, col_limit_causal(int(get<0>(tScS(i))), n_block));
+            fi_min(seqlen_k - n_block * kBlockN, col_limit_causal(int(get<0>(tScS(i))), n_block));
         if (col >= col_limit) {
           tSrS(i) = -INFINITY;
         }

@@ -49,9 +49,9 @@ void rmsnorm_silu(TensorView output, TensorView input, TensorView weight, double
     ctas_per_col = ctas_per_col_max;
   } else {
     ctas_per_col =
-        std::min(static_cast<int>(sm_count) * DESIRED_OCCUPANCY / CTAS_PER_ROW, ctas_per_col_max);
+        fi_min(static_cast<int>(sm_count) * DESIRED_OCCUPANCY / CTAS_PER_ROW, ctas_per_col_max);
   }
-  ctas_per_col = std::max(ctas_per_col, 1);
+  ctas_per_col = fi_max(ctas_per_col, 1);
 
   dim3 grid(CTAS_PER_ROW * ctas_per_col);
   dim3 block(WARPS_M * WARPS_N * 32);

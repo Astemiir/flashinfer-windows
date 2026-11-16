@@ -566,10 +566,10 @@ void run(Data const& data, void* stream) {
     // Limit grid size (all kernels use a grid-stride loop).
     const uint32_t maxNumBlocks = 1024;
 
-    int const numBlocksHistogram = std::min(
+    int const numBlocksHistogram = fi_min(
         (expandedIdxSize + histogramEltsPerBlock - 1) / histogramEltsPerBlock, maxNumBlocks);
     int const numBlocksOffsets =
-        std::min((expandedIdxSize + offsetEltsPerBlock - 1) / offsetEltsPerBlock, maxNumBlocks);
+        fi_min((expandedIdxSize + offsetEltsPerBlock - 1) / offsetEltsPerBlock, maxNumBlocks);
 
     if (data.mPtrScores != nullptr) {
       LAUNCH_ROUTING_LLAMA4(data,

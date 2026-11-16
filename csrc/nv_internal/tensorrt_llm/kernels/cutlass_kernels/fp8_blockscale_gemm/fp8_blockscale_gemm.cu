@@ -216,7 +216,7 @@ template <typename ElementA, typename ElementB, typename ElementD>
 size_t CutlassFp8BlockScaleGemmRunner<ElementA, ElementB, ElementD>::getWorkspaceSizeBase(
     size_t max_shape_m, size_t shape_n, size_t shape_k, size_t num_problems) {
 #ifdef ENABLE_FP8_BLOCK_SCALE
-  max_shape_m_4_align_ = std::max(max_shape_m_4_align_, int64_t(div_up(max_shape_m, 4) * 4));
+  max_shape_m_4_align_ = fi_max(max_shape_m_4_align_, int64_t(div_up(max_shape_m, 4) * 4));
   if (expected_m_ == 0) {
     expected_m_ = div_up(max_shape_m_4_align_, num_problems);
   }

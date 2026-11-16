@@ -440,7 +440,7 @@ cudaError_t AppendPagedKVCacheDecode(paged_kv_t<DType, IdType> paged_kv, DType* 
   uint32_t batch_size = paged_kv.batch_size;
   uint32_t num_heads = paged_kv.num_heads;
   DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, {
-    constexpr uint32_t vec_size = std::max(16 / sizeof(DType), HEAD_DIM / 32);
+    constexpr uint32_t vec_size = fi_max(16 / sizeof(DType), HEAD_DIM / 32);
     uint32_t bdx = HEAD_DIM / vec_size;
     uint32_t bdy = num_heads;
     // NOTE(Zihao): could be slow for small batch size, will optimize later
@@ -480,7 +480,7 @@ cudaError_t AppendPagedKVCache(paged_kv_t<DType, IdType> paged_kv, DType* append
   FLASHINFER_CUDA_CALL(cudaDeviceGetAttribute(&num_sms, cudaDevAttrMultiProcessorCount, dev_id));
 
   DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, {
-    constexpr uint32_t vec_size = std::max(16 / sizeof(DType), HEAD_DIM / 32);
+    constexpr uint32_t vec_size = fi_max(16 / sizeof(DType), HEAD_DIM / 32);
     uint32_t bdx = HEAD_DIM / vec_size;
     uint32_t bdy = num_heads;
     uint32_t num_threads = bdx * bdy;
@@ -916,7 +916,7 @@ cudaError_t AppendPagedKVMlaCache(paged_kv_mla_t<DType, IdType> paged_kv, DType*
   FLASHINFER_CHECK(head_dim_ckv == HEAD_CKV_DIM, "head_dim_ckv must be equal to 512");
   FLASHINFER_CHECK(head_dim_kpe == HEAD_KPE_DIM, "head_dim_kpe must be equal to 64");
   constexpr uint32_t vec_size =
-      std::max(uint32_t(16 / sizeof(DType)), uint32_t(HEAD_CKV_DIM / 128));
+      fi_max(uint32_t(16 / sizeof(DType)), uint32_t(HEAD_CKV_DIM / 128));
 
   uint32_t bdx = HEAD_CKV_DIM / vec_size;
   uint32_t num_threads = bdx;

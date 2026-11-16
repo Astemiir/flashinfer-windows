@@ -1202,7 +1202,7 @@ float const** computeFP8DequantScale(float const** alpha_scale_ptr_array,
     return nullptr;
   }
 
-  int const threads = std::min(1024, num_experts_per_node);
+  int const threads = fi_min(1024, num_experts_per_node);
   int const blocks = (num_experts_per_node + threads - 1) / threads;
 
   computeFP8DequantScaleKernel<<<blocks, threads, 0, stream>>>(alpha_scale_ptr_array,
@@ -1232,7 +1232,7 @@ float const** prepareProfilerFP8TokenScalePtrArray(float const** alpha_scale_ptr
                                                    int64_t const* expert_first_token_offset,
                                                    int const num_experts_per_node,
                                                    int const num_samples, cudaStream_t stream) {
-  int const threads = std::min(128, num_experts_per_node);
+  int const threads = fi_min(128, num_experts_per_node);
   int const blocks = (num_experts_per_node + threads - 1) / threads;
   prepareProfilerFP8TokenScalePtrArrayKernel<<<dim3(blocks, num_samples), threads, 0, stream>>>(
       alpha_scale_ptr_array, fp8_token_scale, expert_first_token_offset, num_experts_per_node,
@@ -1810,7 +1810,7 @@ void expandInputRowsKernelLauncher(
                        "Per-expert act scale for FC1 is only supported for NVFP4 activations");
 #endif
 
-  TLLM_CHECK_WITH_INFO(((hidden_size * std::min(sizeof_bits<InputActivationsType>::value,
+  TLLM_CHECK_WITH_INFO(((hidden_size * fi_min(sizeof_bits<InputActivationsType>::value,
                                                 sizeof_bits<ExpandedActivationsType>::value)) %
                         128) == 0,
                        "hidden_size %ld rows are not a multiple of 16B; expandInputRowsKernel "
@@ -1824,7 +1824,7 @@ void expandInputRowsKernelLauncher(
   // Note: Launching 8 blocks per SM can fully leverage the memory bandwidth (tested on B200).
   // N-dim SF padding has been removed (CUTLASS grouped GEMM never reads beyond
   // tokens_to_expert), so the grid is driven purely by the expanded token count.
-  int64_t const blocks = std::min(smCount * 8, std::max(num_rows * k, int64_t{1}));
+  int64_t const blocks = fi_min(smCount * 8, fi_max(num_rows * k, int64_t{1}));
   int64_t const threads = EXPAND_THREADS_PER_BLOCK;
 
   // Workaround: NVCC on Windows cannot parse &template_func<args> in many expression contexts
@@ -1974,7 +1974,7 @@ __global__ void finalizeMoeRoutingKernel(
 
   // Load 128-bits per thread, according to the smallest data type we read/write
   constexpr int64_t FINALIZE_ELEM_PER_THREAD =
-      128 / std::min(sizeof_bits<OutputType>::value, sizeof_bits<GemmOutputType>::value);
+      128 / fi_min(sizeof_bits<OutputType>::value, sizeof_bits<GemmOutputType>::value);
 
   int64_t const start_offset = threadIdx.x;
   int64_t const stride = FINALIZE_THREADS_PER_BLOCK;
@@ -2082,7 +2082,7 @@ __global__ void finalizeMoeRoutingNoFillingKernel(
 
     // Load 128-bits per thread, according to the smallest data type we read/write
     constexpr int64_t FINALIZE_ELEM_PER_THREAD =
-        128 / std::min(sizeof_bits<OutputType>::value, sizeof_bits<GemmOutputType>::value);
+        128 / fi_min(sizeof_bits<OutputType>::value, sizeof_bits<GemmOutputType>::value);
 
     int64_t const start_offset = threadIdx.x;
     int64_t const stride = FINALIZE_THREADS_PER_BLOCK;
@@ -2431,7 +2431,7 @@ __global__ __launch_bounds__(MAX_ACTIVATION_THREADS_PER_BLOCK) void doActivation
   constexpr int64_t ACTIVATION_ELEM_PER_THREAD =
       (IsNVFP4 || IsMXFP8)
           ? CVT_ELTS_PER_THREAD
-          : (128 / std::min(sizeof_bits<T>::value, sizeof_bits<GemmOutputType>::value));
+          : (128 / fi_min(sizeof_bits<T>::value, sizeof_bits<GemmOutputType>::value));
   static_assert(!IsNVFP44Over6Config<NVFP4_4OVER6_CONFIG>::value || IsNVFP4,
                 "NVFP4 4over6 requires NVFP4 block scaling");
 
@@ -2627,7 +2627,7 @@ void doActivation(T* output, GemmOutputType const* gemm_result, float const* fp8
                   float* fp8_token_dequant_scale, float const* fp8_expert_residual_scale,
                   bool enable_pdl, cudaStream_t stream) {
   TLLM_CHECK_WITH_INFO(
-      (inter_size * std::min(sizeof_bits<T>::value, sizeof_bits<GemmOutputType>::value)) % 128 == 0,
+      (inter_size * fi_min(sizeof_bits<T>::value, sizeof_bits<GemmOutputType>::value)) % 128 == 0,
       "inter_size %ld rows are not a multiple of 16B; doActivationKernel requires 16B-aligned rows",
       inter_size);
   TLLM_CHECK_WITH_INFO(reinterpret_cast<uintptr_t>(gemm_result) % 16 == 0 &&
@@ -2651,7 +2651,7 @@ void doActivation(T* output, GemmOutputType const* gemm_result, float const* fp8
   int64_t const elem_per_thread =
       use_fpx_block_scaling
           ? CVT_ELTS_PER_THREAD
-          : (128 / std::min(sizeof_bits<T>::value, sizeof_bits<GemmOutputType>::value));
+          : (128 / fi_min(sizeof_bits<T>::value, sizeof_bits<GemmOutputType>::value));
   int64_t const loads_per_row = std::max<int64_t>(inter_size / elem_per_thread, int64_t{1});
   // The per-token FP8 quant path reduces the row amax with
   // cub::BlockReduce<float, MAX_ACTIVATION_THREADS_PER_BLOCK>, which requires
@@ -2670,7 +2670,7 @@ void doActivation(T* output, GemmOutputType const* gemm_result, float const* fp8
       int64_t{32},
       tensorrt_llm::common::ceilDiv(int64_t{8} * MAX_ACTIVATION_THREADS_PER_BLOCK, threads));
   int64_t const blocks =
-      std::min(smCount * blocks_per_sm, std::max(expanded_num_tokens, int64_t{1}));
+      fi_min(smCount * blocks_per_sm, fi_max(expanded_num_tokens, int64_t{1}));
 
   // Workaround: NVCC on Windows cannot handle nested lambdas with &template<args> and
   // if constexpr across #ifdef boundaries. Use a typedef and build the array without &.
@@ -3021,7 +3021,7 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMXFPX, 
   auto act_sf_rows =
       min_latency_mode
           ? num_moe_inputs
-          : std::min(num_moe_inputs, static_cast<size_t>(num_rows * num_experts_per_node));
+          : fi_min(num_moe_inputs, static_cast<size_t>(num_rows * num_experts_per_node));
   size_t const sf_size =
       getScalingType() == TmaWarpSpecializedGroupedGemmInput::FpXBlockScalingType::MXFPX
           ? sizeof(TmaWarpSpecializedGroupedGemmInput::MXFPXElementSF)
@@ -3033,7 +3033,7 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMXFPX, 
   size_t const fc2_fp4_act_scale_size =
       getOffsetActivationSF(num_experts_per_node, act_sf_rows, inter_size, getScalingType()) *
       sf_size;
-  size_t const fp4_act_scale_size = std::max(fc1_fp4_act_scale_size, fc2_fp4_act_scale_size);
+  size_t const fp4_act_scale_size = fi_max(fc1_fp4_act_scale_size, fc2_fp4_act_scale_size);
 
   size_t const tma_ws_size = using_tma_ws ? TmaWarpSpecializedGroupedGemmInput::workspaceSize(
                                                 num_experts_per_node, getScalingType())
@@ -3044,12 +3044,12 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMXFPX, 
       (using_tma_ws && use_sm90_mixed_input_gemm)
           ? cutlass_kernels_oss::detail::precomputed_scheduler_workspace_size(
                 num_experts_per_node, num_moe_inputs,
-                std::max(hidden_size, is_gated_activation ? inter_size * 2 : inter_size))
+                fi_max(hidden_size, is_gated_activation ? inter_size * 2 : inter_size))
           : 0;
 
   // lora related
   size_t const lora_input_size =
-      (use_lora && use_fp8) ? std::max(permuted_elems, interbuf_elems) * sizeof(ScaleBiasType) : 0;
+      (use_lora && use_fp8) ? fi_max(permuted_elems, interbuf_elems) * sizeof(ScaleBiasType) : 0;
   size_t const lora_fc1_result_size =
       use_lora ? (is_gated_activation ? 2 * interbuf_elems * sizeof(ScaleBiasType)
                                       : interbuf_elems * sizeof(ScaleBiasType))
@@ -3062,11 +3062,11 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMXFPX, 
   // MiB at most, so we don't bother in the case of fused activation we overlap permuted_data and
   // fc2_result in the case of unfused activation we overlap permuted_data and fc1_result we need to
   // calculate the max possible size, so use the max of all three
-  size_t overlapped_gemm1_gemm2_inputs_size = std::max(permuted_data_size, fc2_result_size);
+  size_t overlapped_gemm1_gemm2_inputs_size = fi_max(permuted_data_size, fc2_result_size);
   // When glu_inter_elems is 0 we are always fused, otherwise we may need the un-fused case
   if (glu_inter_elems > 0) {
     overlapped_gemm1_gemm2_inputs_size =
-        std::max(overlapped_gemm1_gemm2_inputs_size, fc1_result_size);
+        fi_max(overlapped_gemm1_gemm2_inputs_size, fc1_result_size);
   }
 
   size_t const alpha_scale_ptr_array_size = num_experts_per_node * sizeof(float*);
@@ -3075,11 +3075,11 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMXFPX, 
   size_t overlapped_gemm1_gemm2_outputs_size = fc1_result_size;
   if (glu_inter_elems > 0) {
     overlapped_gemm1_gemm2_outputs_size =
-        std::max(std::max(glu_inter_size, fc2_result_size), overlapped_gemm1_gemm2_outputs_size);
+        fi_max(fi_max(glu_inter_size, fc2_result_size), overlapped_gemm1_gemm2_outputs_size);
   }
 
   size_t smoothed_act_size = use_awq
-                                 ? std::max(permuted_elems, interbuf_elems) * sizeof(T) * 2
+                                 ? fi_max(permuted_elems, interbuf_elems) * sizeof(T) * 2
                                  : 0;  // Extra workspace required by AWQ for smoothing activations
   size_t deepseek_fc_workspace_size = 0;
   if (use_deepseek_fp8_block_scale) {
@@ -3087,7 +3087,7 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMXFPX, 
     size_t blockscale_fc1_output_size = factor * interbuf_elems * gemm_output_dtype;
     size_t blockscale_fc2_output_size = permuted_elems * gemm_output_dtype;
     overlapped_gemm1_gemm2_inputs_size =
-        std::max(std::max(permuted_data_size, fc1_result_size), blockscale_fc2_output_size);
+        fi_max(fi_max(permuted_data_size, fc1_result_size), blockscale_fc2_output_size);
     overlapped_gemm1_gemm2_outputs_size = blockscale_fc1_output_size;
 
     auto* blockscale_gemm_runner = getDeepSeekBlockScaleGemmRunner();
@@ -3096,7 +3096,7 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMXFPX, 
         num_rows, factor * inter_size, hidden_size, experts_per_token, num_experts_per_node);
     auto deepseek_fc2_workspace_size = blockscale_gemm_runner->getWorkspaceSize(
         num_rows, hidden_size, inter_size, experts_per_token, num_experts_per_node);
-    deepseek_fc_workspace_size = std::max(deepseek_fc1_workspace_size, deepseek_fc2_workspace_size);
+    deepseek_fc_workspace_size = fi_max(deepseek_fc1_workspace_size, deepseek_fc2_workspace_size);
   }
 
   size_t map_offset = 0;
@@ -3962,7 +3962,7 @@ auto CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMX
   void* tmp_lora_fc_result = static_cast<void*>(lora_fc1_result);
   int64_t num_valid_tokens = host_expert_first_token_offset[num_experts_per_node];
   int64_t num_reqs_lora =
-      std::min(num_valid_tokens, static_cast<int64_t>(num_reqs * num_experts_per_node));
+      fi_min(num_valid_tokens, static_cast<int64_t>(num_reqs * num_experts_per_node));
 
   ::tensorrt_llm::kernels::Lora_run(fc1_lora_impl.get(), num_valid_tokens, num_reqs_lora, input,
                                     host_permuted_fc1_lora_ranks.data(),
@@ -4029,7 +4029,7 @@ void CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMX
   int64_t num_valid_tokens = host_expert_first_token_offset[num_experts_per_node];
   void* tmp_lora_fc_result = static_cast<void*>(lora_fc2_result_);
   int64_t num_reqs_lora =
-      std::min(num_valid_tokens, static_cast<int64_t>(num_reqs * num_experts_per_node));
+      fi_min(num_valid_tokens, static_cast<int64_t>(num_reqs * num_experts_per_node));
 
   ::tensorrt_llm::kernels::Lora_run(fc2_lora_impl.get(), num_valid_tokens, num_reqs_lora, input,
                                     host_permuted_fc2_lora_ranks.data(),
@@ -4464,7 +4464,7 @@ CutlassMoeFCRunner<T, WeightType, OutputType, InputType, BackBoneType, IsMXFPX, 
   // Use a smaller block size to spread work across multiple SMs. Each thread handles one expert,
   // so we only need num_experts_per_node threads total. With 1 warp per block, 128 experts
   // yields 4 blocks across 4 SMs instead of 1 block on 1 SM.
-  int const threads = std::min(32, num_experts_per_node);
+  int const threads = fi_min(32, num_experts_per_node);
   int const blocks = (num_experts_per_node + threads - 1) / threads;
 
   auto* kernel_instance =
@@ -4922,7 +4922,7 @@ std::map<std::string, std::pair<size_t, size_t>> GemmProfilerBackend::getProfile
   }
 
   auto act_sf_rows = mMinLatencyMode ? num_expanded_tokens
-                                     : std::min(num_expanded_tokens,
+                                     : fi_min(num_expanded_tokens,
                                                 static_cast<size_t>(maxM * num_experts_per_node));
   // getOffsetActivationSF returns zero if scaling_type is NONE
   size_t const fc1_fp4_act_scale_size =
@@ -4931,7 +4931,7 @@ std::map<std::string, std::pair<size_t, size_t>> GemmProfilerBackend::getProfile
   size_t const fc2_fp4_act_scale_size =
       getOffsetActivationSF(num_experts_per_node, act_sf_rows, inter_size, mScalingType) *
       sizeof(TmaWarpSpecializedGroupedGemmInput::ElementSF);
-  size_t const fp4_act_scale_flat_size = std::max(fc1_fp4_act_scale_size, fc2_fp4_act_scale_size);
+  size_t const fp4_act_scale_flat_size = fi_max(fc1_fp4_act_scale_size, fc2_fp4_act_scale_size);
 
   size_t w4a8_alpha_size =
       (is_w4afp8_quant || is_wfp4a16_quant) ? num_experts_per_node * sizeof(float) : 0;
@@ -4943,7 +4943,7 @@ std::map<std::string, std::pair<size_t, size_t>> GemmProfilerBackend::getProfile
   size_t precomputed_scheduler_workspace_size =
       (is_tma_ws_input && isSm90MixedInputFamily())
           ? cutlass_kernels_oss::detail::precomputed_scheduler_workspace_size(
-                num_experts_per_node, num_expanded_tokens, std::max(hidden_size, fc1_out_size))
+                num_experts_per_node, num_expanded_tokens, fi_max(hidden_size, fc1_out_size))
           : 0;
 
   // Routing info

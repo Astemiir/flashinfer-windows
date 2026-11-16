@@ -105,7 +105,7 @@ class StaticPersistentTileScheduler {
       return {uint32_t(cute::ceil_div(total_blocks, waves))};
     }
 
-    int grid = std::min(total_blocks, num_sm);
+    int grid = fi_min(total_blocks, num_sm);
     if (args.num_blocks_m <= 32 && total_blocks > grid) {
       // Pick the nearest grid size whose persistent stride is coprime to the
       // number of M blocks. Combined with the heavy/light row order below,

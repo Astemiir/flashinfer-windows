@@ -117,7 +117,7 @@ class AllToAllChannelCommunicatorBase {
     FLASHINFER_CHECK(blockCountPerChannel <= smCount,
                      "GPU should support at lease one channel, usableSmCount=%d", smCount);
     int perferredChannel = smCount / 2 / blockCountPerChannel;  // use half SMs for communication
-    int channelCount = std::max(perferredChannel, 1);           // at lease one channel
+    int channelCount = fi_max(perferredChannel, 1);           // at lease one channel
     return channelCount;
   }
 
@@ -823,7 +823,7 @@ cudaError_t moeAllToAllPrepareIndices(
       cudaMemsetAsync(sendRankCountCumSum, 0, sizeof(int) * worldInfo.epSize, stream));
   FLASHINFER_CUDA_CALL(
       cudaMemsetAsync(recvRankCountCumSum, 0, sizeof(int) * worldInfo.epSize, stream));
-  int maxSendRanksPerToken = std::max(worldInfo.epSize, expertParallelInfo.topK);
+  int maxSendRanksPerToken = fi_max(worldInfo.epSize, expertParallelInfo.topK);
 
   FLASHINFER_CUDA_CALL(cudaMemsetAsync(
       localGatherIndices, -1, maxTokenCountPerRank * worldInfo.epSize * sizeof(int), stream));

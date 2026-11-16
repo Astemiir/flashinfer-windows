@@ -503,7 +503,7 @@ void fmha_v2_run(
   if (data_type == DATA_TYPE_FP16 && scale_softmax == 0.f) {
     scale_softmax = 1.f;
   } else if (data_type == DATA_TYPE_INT8 && scale_softmax == 0.f) {
-    scale_softmax = std::max(512.f, static_cast<float>(s));
+    scale_softmax = fi_max(512.f, static_cast<float>(s));
   } else if (data_type == DATA_TYPE_E4M3 && scale_softmax == 0.f) {
     scale_softmax = 1.f;
   }

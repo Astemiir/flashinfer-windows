@@ -98,7 +98,7 @@ CUTLASS_DEVICE void mma_f16(
   auto mask_multi_item_scoring = [&](decltype(tSrS)& tSrS, int i, int qo_idx, int kv_idx) {
     const uint32_t idx_in_original_seq = qo_idx + kv_len - qo_len;
     const bool out_of_boundary =
-        kv_idx > idx_in_original_seq || (kv_idx >= std::min(kv_len, col_limit_right(qo_idx)));
+        kv_idx > idx_in_original_seq || (kv_idx >= fi_min(kv_len, col_limit_right(qo_idx)));
     const bool is_prefix = idx_in_original_seq < prefix_len;
     uint16_t token_pos_in_items_regs = 0;
     // Only access idx_in_original_seq >= prefix_len && idx_in_original_seq < kv_len to avoid
@@ -159,7 +159,7 @@ CUTLASS_DEVICE void mma_f16(
           tSrS(i) = AttentionUpdater::fill_value;
         }
       } else {
-        if (kv_idx >= std::min(kv_len, col_limit_right(qo_idx))) {
+        if (kv_idx >= fi_min(kv_len, col_limit_right(qo_idx))) {
           tSrS(i) = AttentionUpdater::fill_value;
         }
       }

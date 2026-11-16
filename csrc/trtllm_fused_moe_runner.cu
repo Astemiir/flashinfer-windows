@@ -99,7 +99,7 @@ int32_t alignValidDim(int32_t validDim, int32_t paddedDim) {
   }
   int32_t const aligned =
       ((validDim + kValidDimAlignment - 1) / kValidDimAlignment) * kValidDimAlignment;
-  return std::min(aligned, paddedDim);
+  return fi_min(aligned, paddedDim);
 }
 
 }  // namespace
