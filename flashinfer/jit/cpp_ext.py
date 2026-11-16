@@ -21,6 +21,19 @@ is_windows = os.name == "nt"
 logger = logging.getLogger(__name__)
 
 
+def windows_artifact_name(name: str) -> str:
+    """Short artifact file name for a JIT module on Windows.
+
+    The module name is the whole JIT spec, and a name that long cannot be used
+    for the file itself: the build tree already carries the spec as its directory
+    name and the two together pass MAX_PATH. ``m`` plus the first ten hex digits
+    of the md5 keeps it decodable (``m88bfe1c0e4.dll`` -> this spec) and stable.
+    """
+    import hashlib
+
+    return "m" + hashlib.md5(name.encode("utf-8")).hexdigest()[:10] + ".dll"
+
+
 def parse_env_flags(env_var_name) -> List[str]:
     env_flags = os.environ.get(env_var_name)
     if env_flags:
@@ -220,6 +233,12 @@ def build_cuda_cflags(
             "-Xcompiler /Zc:__cplusplus",
             "-Xcompiler /Zc:preprocessor"
         ] + common_cuda_flags [1:]
+        # MSVC rejects a few GCC-isms the kernels rely on (`ushort`,
+        # `__attribute__`, `__restrict__`, `M_PI`) and its <algorithm> `std::max`
+        # is host-only. The compat header supplies them for every translation unit
+        # without editing the kernels themselves.
+        if (jit_env.FLASHINFER_INCLUDE_DIR / "flashinfer" / "msvc_compat.cuh").is_file():
+            common_cuda_flags.append("--pre-include=flashinfer/msvc_compat.cuh")
 
     cuda_cflags += [
         "$common_cuda_flags",
@@ -332,6 +351,11 @@ def generate_ninja_build_for_op(
     nvcc_launcher = os.environ.get("FLASHINFER_NVCC_LAUNCHER", "")
 
     if is_windows:
+        # JIT kernels reference template variants the generator deliberately does
+        # not instantiate ("don't instantiate unreachable variants": e.g.
+        # CTA_TILE_Q=32 for head_dim < 512). A Linux .so keeps such symbols
+        # unresolved; link.exe stops with LNK2019/LNK1120 instead, so ask it to
+        # do what the .so does. The code paths are never entered.
         rule_compile = [
             "rule compile",
             "  command = cl.exe $cflags -c $in /Fo$out $post_cflags",
@@ -345,7 +369,7 @@ def generate_ninja_build_for_op(
         ]
         rule_link = [
             "rule link",
-            "  command = link.exe /DLL $in /nologo $ldflags /out:$out",
+            "  command = link.exe /DLL $in /nologo $ldflags /out:$out /FORCE:UNRESOLVED",
         ]
     else:
         rule_compile = [
@@ -460,7 +484,11 @@ def generate_ninja_build_for_op(
     lines.append("")
     link_rule = "nvcc_link" if needs_device_linking else "link"
     if is_windows:
-        output_so = str((output_dir / f"{name}.dll").resolve()).replace(":\\", "$:\\")
+        # `name` is the full JIT spec (185+ characters) and is also the directory
+        # name, so an artifact called `<spec>.dll` overflows MAX_PATH on its own;
+        # the loader in core.py derives the same short name.
+        out_name = windows_artifact_name(name)
+        output_so = str((output_dir / out_name).resolve()).replace(":\\", "$:\\")
         lines.append(f"build {output_so}: {link_rule} " + " ".join(objects))
         lines.append(f"default {output_so}")
     else:

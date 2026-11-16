@@ -24,7 +24,12 @@ from filelock import FileLock
 
 from ..compilation_context import CompilationContext
 from . import env as jit_env
-from .cpp_ext import generate_ninja_build_for_op, get_nvcc_parallelism_flags, run_ninja
+from .cpp_ext import (
+    generate_ninja_build_for_op,
+    get_nvcc_parallelism_flags,
+    run_ninja,
+    windows_artifact_name,
+)
 from .utils import write_if_different
 
 os.makedirs(jit_env.FLASHINFER_WORKSPACE_DIR, exist_ok=True)
@@ -436,7 +441,12 @@ class JitSpecNvcc(JitSpec):
 
     @property
     def jit_library_path(self) -> Path:
-        return jit_env.FLASHINFER_JIT_DIR / self.name / f"{self.name}.dll" if os.name == "nt" else f"{self.name}.so"
+        if os.name == "nt":
+            # Same short name the generator links to; see windows_artifact_name.
+            return jit_env.FLASHINFER_JIT_DIR / self.name / windows_artifact_name(
+                self.name
+            )
+        return jit_env.FLASHINFER_JIT_DIR / self.name / f"{self.name}.so"
 
     def get_library_path(self) -> Path:
         if self.is_aot:
