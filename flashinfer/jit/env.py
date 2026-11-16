@@ -19,6 +19,7 @@ limitations under the License.
 # This helps AOT script to override envs.
 
 import functools
+import hashlib
 import logging
 import os
 import pathlib
@@ -376,9 +377,51 @@ def _get_workspace_dir_name() -> pathlib.Path:
 
 
 # use pathlib
+class _ShortPath(pathlib.Path):
+    """A path whose over-long directory names are hashed on Windows.
+
+    One JIT spec name is ~185 characters, e.g.
+    ``batch_prefill_with_kv_cache_dtype_q_bf16_dtype_kv_e4m3_dtype_o_bf16_dtype_idx_i32_head_dim_qk_256_head_dim_vo_256_posenc_0_use_swa_False_use_logits_cap_False_f16qk_False_kv_stride_equal``,
+    and the same string is used as a directory name and inside the artifact name.
+    Even with the flat ``%SystemDrive%:\\_fij`` root the full path then passes
+    MAX_PATH (260), and nvcc resolves file names through the ANSI
+    ``GetLongPathName``, which fails there regardless of ``LongPathsEnabled`` —
+    the limit is in the string, not in the filesystem.
+
+    Hashing the segment inside ``/`` keeps every writer (core, cpp_ext, the
+    attention/gemm/mamba modules) on the same short path without touching them.
+    The key includes the version and arch directories, so two workspaces never
+    collide.
+    """
+
+    _MAX_SEGMENT = 32
+
+    def __truediv__(self, key):
+        if os.name != "nt":
+            return super().__truediv__(key)
+        name = os.fspath(key)
+        # Only extension-less segments: those are JIT spec names (directories).
+        # Generated source files keep their names — they are #included by name.
+        if (
+            isinstance(name, str)
+            and len(name) > self._MAX_SEGMENT
+            and "." not in name
+            and "/" not in name
+            and "\\" not in name
+        ):
+            name = "s" + hashlib.md5(
+                f"{self.as_posix()}/{name}".encode("utf-8")
+            ).hexdigest()[:12]
+        return super().__truediv__(name)
+
+    __div__ = __truediv__
+
+
 FLASHINFER_WORKSPACE_DIR: pathlib.Path = _get_workspace_dir_name()
-FLASHINFER_JIT_DIR: pathlib.Path = FLASHINFER_WORKSPACE_DIR / "cached_ops"
-FLASHINFER_GEN_SRC_DIR: pathlib.Path = FLASHINFER_WORKSPACE_DIR / "generated"
+FLASHINFER_JIT_DIR: pathlib.Path = _ShortPath(FLASHINFER_WORKSPACE_DIR) / "cached_ops"
+FLASHINFER_GEN_SRC_DIR: pathlib.Path = (
+    _ShortPath(FLASHINFER_WORKSPACE_DIR) / "generated"
+)
 FLASHINFER_DATA: pathlib.Path = _package_root / "data"
 FLASHINFER_INCLUDE_DIR: pathlib.Path = _package_root / "data" / "include"
 FLASHINFER_CSRC_DIR: pathlib.Path = _package_root / "data" / "csrc"
