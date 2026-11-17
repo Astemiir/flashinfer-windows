@@ -418,9 +418,19 @@ the answer to `17*23` was correct, and the log shows
 
 1. **A cu129 variant** for users on older drivers (CUDA 13 requires driver 580+).
 2. **Publication**: a release in our fork with the three wheels and the README.
-3. Other architectures (sm_89, sm_90, sm_120) — the same pipeline with a different
-   `FLASHINFER_CUDA_ARCH_LIST` and an `smXX` provider, but sm_80 SASS does not
-   carry over to them.
+3. Hopper and Blackwell are a different major version: the same pipeline with
+   their own `FLASHINFER_CUDA_ARCH_LIST` and an `smXX` provider, but sm_80 SASS
+   does not carry over. Everything else of major version 8 is already covered:
+
+   | compute capability | cards |
+   |---|---|
+   | sm_80 (exact) | A100 (40/80 GB), A800, A30 |
+   | sm_86 | RTX 3090, 3090 Ti, 3080 Ti, 3080, 3070 Ti, 3070, 3060 Ti, 3060; RTX A4000 / A5000 / A6000; A10, A40 |
+   | sm_89 (Ada) | RTX 4090, 4080, 4070 Ti, 4070, 4060 Ti, 4060; RTX 4000 / 5000 / 6000 Ada; L4, L40, L40S |
+
+   Not covered: H100/H200 (sm_90), B100/B200 (sm_100), RTX 50 series (sm_120).
+   FlashInfer agrees: `cuda_binary_target_compatibility_score('sm80','sm86')`
+   and `('sm80','sm89')` are `(1, 0)`, `('sm80','sm90')` is `None`.
 
 ---
 
